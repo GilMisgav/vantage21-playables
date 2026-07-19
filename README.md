@@ -1,8 +1,13 @@
 # Playable Ads
 
+**Live portal (share with the team):** https://gilmisgav.github.io/vantage21-playables/
+— gallery at `/`, device-resolution preview at `/viewer.html`. Every push to
+`main` on [GilMisgav/vantage21-playables](https://github.com/GilMisgav/vantage21-playables)
+redeploys the site automatically (GitHub Pages).
+
 Single-file HTML5 playable ads for Meta (Facebook) and other networks. Each
-playable is fully self-contained — no external libraries, no image files
-(cards/table/chips are pure CSS + SVG/emoji).
+playable is fully self-contained — no external requests (the Vantage 21
+creative embeds the real app card art + Cormorant Garamond as data URIs).
 
 ## Folder layout
 
