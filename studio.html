@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playable Studio</title>
+<style>
+  :root { --bg:#0c1410; --panel:#142019; --panel2:#0e1a13; --line:#25372b; --gold:#ffd34d; --green:#41d97a; --blue:#5aa9ff; --text:#e9f3ec; --muted:#8aa595; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Segoe UI",Roboto,Arial,sans-serif; background:radial-gradient(ellipse at 50% -10%,#16271d,var(--bg) 55%); color:var(--text); height:100vh; overflow:hidden; }
+  .topbar { display:flex; align-items:center; gap:14px; padding:12px 18px; border-bottom:1px solid var(--line); }
+  .topbar h1 { font-size:16px; font-weight:800; }
+  .topbar h1 span { color:var(--gold); }
+  .topbar .file { color:var(--muted); font-size:12px; }
+  .topbar a { margin-left:auto; color:var(--muted); text-decoration:none; font-size:13px; border:1px solid var(--line); padding:7px 12px; border-radius:8px; }
+  .topbar a:hover { color:var(--text); }
+
+  .layout { display:flex; height:calc(100vh - 51px); }
+  .left { width:430px; flex:none; border-right:1px solid var(--line); display:flex; flex-direction:column; align-items:center; padding:18px; overflow:auto; }
+  .phone { width:360px; height:660px; flex:none; border-radius:38px; padding:11px; background:linear-gradient(145deg,#2a2a2a,#0d0d0d); box-shadow:0 24px 60px rgba(0,0,0,.55),inset 0 0 0 2px #3a3a3a; position:relative; }
+  .phone::before { content:""; position:absolute; top:14px; left:50%; transform:translateX(-50%); width:110px; height:22px; background:#0d0d0d; border-radius:0 0 14px 14px; z-index:2; }
+  .phone iframe { width:100%; height:100%; border:0; border-radius:28px; background:#07100b; }
+  .pv-bar { display:flex; gap:8px; margin-top:14px; }
+  .pv-bar button { background:#1d2e24; color:var(--text); border:1px solid var(--line); padding:8px 14px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; }
+  .pv-bar button.primary { background:var(--green); color:#06210f; border:0; }
+
+  .right { flex:1; display:flex; flex-direction:column; min-width:0; }
+  .tabs { display:flex; border-bottom:1px solid var(--line); }
+  .tab { padding:13px 20px; font-size:14px; font-weight:700; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; }
+  .tab.active { color:var(--text); border-bottom-color:var(--green); }
+  .panes { flex:1; overflow:auto; padding:20px 24px; }
+  .pane { display:none; }
+  .pane.active { display:block; }
+
+  .section { margin-bottom:22px; }
+  .section h3 { font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--green); margin-bottom:10px; font-weight:800; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .field { display:flex; flex-direction:column; gap:5px; }
+  .field.full { grid-column:1/-1; }
+  .field label { font-size:12px; color:var(--muted); }
+  .field input, .field textarea, .field select { background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:9px 11px; border-radius:8px; font-size:13px; font-family:inherit; }
+  .field input[type=color] { padding:3px; height:38px; cursor:pointer; }
+  .field textarea { resize:vertical; min-height:54px; }
+  .hint { font-size:11px; color:var(--muted); margin-top:-4px; }
+  code { background:var(--panel2); padding:1px 5px; border-radius:4px; color:var(--gold); font-size:12px; }
+
+  #codeArea { width:100%; height:62vh; background:#0a120d; border:1px solid var(--line); color:#d7e7dc; border-radius:10px; padding:14px; font:12px/1.5 "SF Mono",Menlo,Consolas,monospace; resize:none; white-space:pre; }
+  .btn { background:var(--green); color:#06210f; border:0; padding:10px 16px; border-radius:9px; font-size:13px; font-weight:800; cursor:pointer; }
+  .btn.ghost { background:#1d2e24; color:var(--text); border:1px solid var(--line); }
+  .btn.blue { background:var(--blue); color:#04223f; }
+  .btn:hover { filter:brightness(1.1); }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+
+  .ai-out, .note { background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:14px; font-size:13px; line-height:1.5; color:var(--muted); white-space:pre-wrap; }
+  .ai-out { min-height:120px; max-height:42vh; overflow:auto; }
+  .badge { display:inline-block; font-size:10px; font-weight:800; letter-spacing:.5px; padding:3px 8px; border-radius:20px; text-transform:uppercase; }
+  .badge.fb { background:rgba(90,169,255,.16); color:var(--blue); border:1px solid rgba(90,169,255,.4); }
+  .badge.al { background:rgba(65,217,122,.16); color:var(--green); border:1px solid rgba(65,217,122,.4); }
+  .badge.ap { background:rgba(220,220,220,.14); color:#dcdcdc; border:1px solid rgba(220,220,220,.35); }
+  .badge.ge { background:rgba(255,211,77,.14); color:var(--gold); border:1px solid rgba(255,211,77,.4); }
+  .exp-card { border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px; display:flex; align-items:center; gap:14px; }
+  .exp-card .meta { flex:1; }
+  .exp-card .meta b { display:block; margin-bottom:3px; }
+  .exp-card .meta span { font-size:12px; color:var(--muted); }
+  .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); background:#1d2e24; border:1px solid var(--line); color:var(--text); padding:11px 18px; border-radius:10px; font-size:13px; opacity:0; transition:.25s; pointer-events:none; z-index:50; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .warn { color:#ffb15e; }
+  .ok { color:var(--green); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Playable <span>Studio</span></h1>
+    <span class="file" id="fileName">—</span>
+    <span class="file" id="saveState" style="color:#41d97a;"></span>
+    <a href="index.html">← Gallery</a>
+  </div>
+
+  <div class="layout">
+    <div class="left">
+      <div class="phone"><iframe id="pv" title="preview"></iframe></div>
+      <div class="pv-bar">
+        <button id="editBtn" onclick="toggleEdit()">✏️ Edit on canvas</button>
+        <button class="primary" onclick="refreshPreview()">↻ Replay</button>
+        <button onclick="resetEdits()">Reset edits</button>
+      </div>
+      <div class="pv-bar" id="addBar" style="display:none;">
+        <button onclick="addText()">➕ Text</button>
+        <button onclick="addImage()">🖼️ Image</button>
+        <button onclick="aiAddElement()">✨ AI element</button>
+      </div>
+      <p class="hint" id="editHint" style="margin-top:8px; max-width:380px; text-align:center; display:none;">Click an item to select it (✏️ edit · ✨ AI · 🗑️ delete) · double-click text to edit · drag to move. Saves into the file &amp; every export.</p>
+    </div>
+
+    <div class="right">
+      <div class="tabs">
+        <div class="tab active" data-tab="visual">🎨 Visual</div>
+        <div class="tab" data-tab="code">⌨️ Code</div>
+        <div class="tab" data-tab="ai">✨ AI</div>
+        <div class="tab" data-tab="export">⬇️ Export</div>
+        <div class="tab" data-tab="history">🕘 History</div>
+      </div>
+      <div class="panes">
+
+        <!-- VISUAL -->
+        <div class="pane active" id="pane-visual">
+          <div id="visualForm"></div>
+        </div>
+
+        <!-- CODE -->
+        <div class="pane" id="pane-code">
+          <p class="hint" style="margin-bottom:10px">Full single-file source. Edit freely, then Apply to preview. The <code>CONFIG</code> block near the top is what the Visual tab edits.</p>
+          <textarea id="codeArea" spellcheck="false"></textarea>
+          <div class="row">
+            <button class="btn" onclick="applyCode()">Apply &amp; Preview</button>
+            <button class="btn ghost" onclick="formatFromVisual()">Rebuild from Visual</button>
+            <button class="btn ghost" onclick="downloadCurrent()">Download this file</button>
+          </div>
+        </div>
+
+        <!-- HISTORY -->
+        <div class="pane" id="pane-history">
+          <div class="section">
+            <h3>Version history — this creative</h3>
+            <p class="hint">Your edits <b>auto-save in this browser</b> per creative, so they survive reloads. Restore any earlier point below.</p>
+            <div class="row" style="margin:12px 0 16px;">
+              <button class="btn" onclick="saveVersion()">＋ Save named version</button>
+              <button class="btn ghost" onclick="clearSaved()">Discard saved &amp; reset to original</button>
+            </div>
+            <div id="histList"></div>
+          </div>
+        </div>
+
+        <!-- AI -->
+        <div class="pane" id="pane-ai">
+          <div class="section">
+            <h3>Ask AI to change or review</h3>
+            <div class="field full">
+              <label>What should the AI do? (e.g. “make it a 17 vs dealer 9, more aggressive copy, blue felt”)</label>
+              <textarea id="aiPrompt" placeholder="Describe the change, or leave blank and click Review."></textarea>
+            </div>
+            <div class="row">
+              <button class="btn ghost" onclick="copyBrief('edit')">📋 Copy edit brief → paste in Claude</button>
+              <button class="btn ghost" onclick="copyBrief('review')">📋 Copy review request → paste in Claude</button>
+            </div>
+            <p class="hint" style="margin-top:10px">No setup needed — this copies your current file + instruction so you can paste it into Claude Code (this chat) and get the updated file back.</p>
+          </div>
+
+          <div class="section">
+            <h3>Or run it live (optional — your Anthropic API key)</h3>
+            <div class="grid2">
+              <div class="field"><label>API key (stored only in this browser)</label><input id="apiKey" type="password" placeholder="sk-ant-..."></div>
+              <div class="field"><label>Model</label><select id="apiModel">
+                <option value="claude-sonnet-4-6">Sonnet 4.6 (fast)</option>
+                <option value="claude-opus-4-8">Opus 4.8 (best)</option>
+                <option value="claude-haiku-4-5-20251001">Haiku 4.5 (cheapest)</option>
+              </select></div>
+            </div>
+            <div class="row">
+              <button class="btn blue" onclick="runAI('edit')">✨ Run edit</button>
+              <button class="btn blue" onclick="runAI('review')">🔍 Run review</button>
+              <span class="hint" id="aiStatus"></span>
+            </div>
+            <p class="hint" style="margin-top:8px">The key is kept in <code>localStorage</code> on this machine and is never written into exported ads. Edits replace the Code tab; reviews appear below.</p>
+          </div>
+
+          <div class="ai-out" id="aiOut">Results appear here.</div>
+        </div>
+
+        <!-- EXPORT -->
+        <div class="pane" id="pane-export">
+          <div class="section">
+            <h3>Click-through URL</h3>
+            <div class="field full"><label>Store / landing URL (used by AppLovin, Apple &amp; generic)</label><input id="expUrl" placeholder="https://apps.apple.com/app/..."></div>
+          </div>
+          <div class="section">
+            <h3>Download per network</h3>
+            <div class="exp-card">
+              <span class="badge fb">Facebook</span>
+              <div class="meta"><b>Meta / Facebook</b><span>CTA → <code>FbPlayableAd.onCTAClick()</code>. Single self-contained file, no external assets.</span></div>
+              <button class="btn" onclick="exportFor('facebook')">Download</button>
+            </div>
+            <div class="exp-card">
+              <span class="badge al">AppLovin</span>
+              <div class="meta"><b>AppLovin</b><span>CTA → MRAID <code>mraid.open(url)</code> (falls back to <code>window.open</code>).</span></div>
+              <button class="btn" onclick="exportFor('applovin')">Download</button>
+            </div>
+            <div class="exp-card">
+              <span class="badge ap">Apple</span>
+              <div class="meta"><b>Apple</b><span>CTA → <code>window.open(url)</code>. <span class="warn">Note: Apple Search Ads has no playable format — use this for App Store landing / Apple display placements.</span></span></div>
+              <button class="btn" onclick="exportFor('apple')">Download</button>
+            </div>
+            <div class="exp-card">
+              <span class="badge ge">Generic</span>
+              <div class="meta"><b>Generic / other networks</b><span>CTA → <code>window.open(url)</code>. Good base for Unity, ironSource, Google.</span></div>
+              <button class="btn" onclick="exportFor('generic')">Download</button>
+            </div>
+            <div class="row"><button class="btn ghost" onclick="exportAll()">⬇️ Download all four</button></div>
+          </div>
+          <div class="section">
+            <h3>Pre-flight check</h3>
+            <div class="note" id="preflight">Run a quick scan for external assets (Meta requires a fully self-contained file).</div>
+            <div class="row"><button class="btn ghost" onclick="preflight()">Run check</button></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  var $ = function(id){ return document.getElementById(id); };
+  var params = new URLSearchParams(location.search);
+  var SRC = params.get('src') || 'variations/vantage21-bet-hit-21.html';
+  $('fileName').textContent = SRC;
+
+  var baseTemplate = '';   // fetched source
+  var currentHtml = '';    // authoritative source shown in preview/code
+  var config = {};         // visual state
+
+  // ---- path helpers ----
+  function getPath(o,p){ return p.split('.').reduce(function(a,k){ return a==null?a:a[k]; }, o); }
+  function setPath(o,p,v){ var ks=p.split('.'); var last=ks.pop(); var t=ks.reduce(function(a,k){ return a[k]; }, o); t[last]=v; }
+
+  // ---- config <-> html ----
+  function parseConfig(html){
+    var m = html.match(/\/\/CONFIG_START[\s\S]*?const CONFIG = (\{[\s\S]*\});\s*\/\/CONFIG_END/);
+    if(!m) throw new Error('CONFIG block not found in source');
+    return (new Function('return (' + m[1] + ')'))();
+  }
+  function inject(html, cfg){
+    var block = '//CONFIG_START\n  const CONFIG = ' + JSON.stringify(cfg, null, 2) + ';\n  //CONFIG_END';
+    return html.replace(/\/\/CONFIG_START[\s\S]*?\/\/CONFIG_END/, block);
+  }
+
+  // ---- persistence + history (per creative, in this browser) ----
+  var DOC_KEY = 'studio:doc:' + SRC;
+  var HIST_KEY = 'studio:hist:' + SRC;
+  var versions = [];   // NOTE: not named "history" — that collides with window.history
+  function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function lsSet(k,v){ try { localStorage.setItem(k,v); return true; } catch(e){ return false; } }
+  function setSaved(t, warn){ var el=$('saveState'); if(el){ el.textContent=t; el.style.color = warn ? '#ffb15e' : '#41d97a'; } }
+  function autosave(){ if(lsSet(DOC_KEY, currentHtml)) setSaved('Saved ✓'); else setSaved('⚠ too large to auto-save', true); }
+  function loadHistory(){ try { var v = JSON.parse(lsGet(HIST_KEY) || '[]'); versions = Array.isArray(v) ? v : []; } catch(e){ versions = []; } }
+  function saveHistory(){ for(var i=0;i<8;i++){ if(lsSet(HIST_KEY, JSON.stringify(versions))) return; if(versions.length>1) versions.shift(); else return; } }
+  function snapshot(label){
+    var last = versions[versions.length-1];
+    if(last && last.html === currentHtml){ last.label = label || last.label; saveHistory(); renderHistory(); return; }
+    versions.push({ t: Date.now(), label: label || 'Edit', html: currentHtml });
+    while(versions.length > 20) versions.shift();
+    saveHistory(); renderHistory();
+  }
+  var snapTimer=null;
+  function scheduleSnapshot(label){ clearTimeout(snapTimer); snapTimer=setTimeout(function(){ snapshot(label||'Edit'); }, 3500); }
+  function saveVersion(){ var n = window.prompt('Name this version:', 'Manual save'); if(n===null) return; snapshot(n || 'Manual save'); toast('Version saved'); }
+  function clearSaved(){
+    if(!confirm('Discard ALL saved edits and history for this creative and reset to the original file?')) return;
+    try { localStorage.removeItem(DOC_KEY); localStorage.removeItem(HIST_KEY); } catch(e){}
+    config = parseConfig(baseTemplate); currentHtml = inject(baseTemplate, config); versions = [];
+    $('codeArea').value = currentHtml; $('expUrl').value = config.ctaUrl || ''; buildForm(); refreshPreview();
+    snapshot('Original'); setSaved('reset'); toast('Reset to original');
+  }
+  function restoreVersion(i){
+    var h = versions[i]; if(!h) return;
+    currentHtml = h.html; try { config = parseConfig(h.html); } catch(e){}
+    $('codeArea').value = currentHtml; $('expUrl').value = config.ctaUrl || ''; buildForm(); refreshPreview(); autosave();
+    snapshot('Restored: ' + h.label); toast('Restored “'+h.label+'”');
+  }
+  function renderHistory(){
+    var el = $('histList'); if(!el) return;
+    if(!versions.length){ el.innerHTML = '<p class="hint">No versions yet.</p>'; return; }
+    var rows = [];
+    for(var idx = versions.length-1; idx >= 0; idx--){
+      var h = versions[idx], cur = (idx === versions.length-1);
+      var time = new Date(h.t).toLocaleString();
+      rows.push('<div class="exp-card"><div class="meta"><b>'+escapeHtml(h.label)+(cur?' · current':'')+'</b><span>'+time+' · '+Math.round(h.html.length/1024)+' KB</span></div>'
+        + (cur ? '' : '<button class="btn ghost" onclick="restoreVersion('+idx+')">Restore</button>') + '</div>');
+    }
+    el.innerHTML = rows.join('');
+  }
+
+  // ---- preview ----
+  var editMode = false;
+  function refreshPreview(){ $('pv').srcdoc = editMode ? injectEditor(currentHtml) : currentHtml; }
+  function openRaw(){ var w=window.open(); w.document.open(); w.document.write(currentHtml); w.document.close(); }
+  function toggleEdit(){
+    editMode = !editMode;
+    $('editBtn').textContent = editMode ? '✓ Editing — click items on the preview' : '✏️ Edit on canvas';
+    $('editBtn').classList.toggle('primary', editMode);
+    $('editHint').style.display = editMode ? 'block' : 'none';
+    $('addBar').style.display = editMode ? 'flex' : 'none';
+    refreshPreview();
+  }
+  function ensureEdit(){ if(!editMode) toggleEdit(); }
+  function resetEdits(){ config.layout = {}; config.hidden = []; config.customItems = []; config.styles = {}; rebuild(); snapshot('Reset canvas edits'); toast('Canvas edits cleared'); }
+
+  function uid(p){ return p + '_' + Date.now().toString(36) + '_' + Math.floor(Math.random()*1e6); }
+  function findCustom(id){ return (config.customItems||[]).filter(function(it){ return it.id===id; })[0]; }
+  function addText(){
+    config.customItems = config.customItems || [];
+    config.customItems.push({ id: uid('ct'), type:'text', text:'New text', x:150, y:300, size:24, color:'#ffd34d', weight:'800' });
+    ensureEdit(); rebuild(); snapshot('Added text'); toast('Text added — drag it, double-click to edit');
+  }
+  function addImage(){
+    var inp = document.createElement('input'); inp.type='file'; inp.accept='image/*';
+    inp.onchange = function(){
+      var f = inp.files[0]; if(!f) return;
+      if(f.size > 600000 && !confirm('Image is '+Math.round(f.size/1024)+' KB. Large images bloat the ad (Meta limit ~2 MB). Add anyway?')) return;
+      var rd = new FileReader();
+      rd.onload = function(){ config.customItems = config.customItems || []; config.customItems.push({ id: uid('ci'), type:'image', src: rd.result, x:160, y:300, w:130 }); ensureEdit(); rebuild(); snapshot('Added image'); toast('Image added (embedded) — drag to position'); };
+      rd.readAsDataURL(f);
+    };
+    inp.click();
+  }
+  function aiOnElement(id, desc){
+    var instr = window.prompt('AI — change the “'+desc+'” element. What should it do?');
+    if(!instr) return;
+    $('aiPrompt').value = 'Modify the element with id "'+id+'" ('+desc+'): ' + instr + '. Keep everything else intact and keep the file self-contained.';
+    document.querySelector('.tab[data-tab="ai"]').click();
+    if($('apiKey').value.trim()){ runAI('edit'); } else { copyBrief('edit'); toast('No API key — brief copied; paste into Claude'); }
+  }
+
+  // ---- AI generation INSIDE the canvas: make a new asset and drop it on the board ----
+  function extractSnippet(t){ var m = t.match(/```(?:html)?\s*([\s\S]*?)```/); return (m ? m[1] : t).trim(); }
+  function addCustomHtml(html){ if(!html) return; config.customItems = config.customItems || []; config.customItems.push({ id: uid('ch'), type:'html', html: html, x:140, y:300 }); ensureEdit(); rebuild(); snapshot('Added AI element'); toast('AI element added — drag to position'); }
+  function callAI(prompt, onText){
+    var key = $('apiKey').value.trim(); if(!key) return false;
+    localStorage.setItem('anthropic_key', key);
+    var model = ($('apiModel') && $('apiModel').value) || 'claude-sonnet-4-6';
+    toast('Generating asset with ' + model + '…');
+    fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'content-type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:model, max_tokens:3000, messages:[{ role:'user', content:prompt }] })
+    }).then(function(r){ return r.json(); }).then(function(d){
+      if(d.error){ toast('API error: ' + (d.error.message||'')); return; }
+      onText((d.content||[]).map(function(b){ return b.text||''; }).join('\n').trim());
+    }).catch(function(e){ toast('Request failed: ' + e.message); });
+    return true;
+  }
+  function aiAddElement(){
+    var instr = window.prompt('Describe an asset to generate (a styled text / badge / sticker). e.g. "a glowing gold 2X BONUS badge"');
+    if(!instr) return;
+    var brief = 'Return ONLY one self-contained HTML snippet — a single root <div> with ALL styling inline, no <script>, no external assets, transparent background, sized as a small mobile-ad overlay element — for: ' + instr + '. Output just the raw HTML, no markdown fences, no commentary.';
+    var ran = callAI(brief, function(t){ addCustomHtml(extractSnippet(t)); });
+    if(!ran){
+      navigator.clipboard.writeText(brief).then(function(){}, function(){});
+      var pasted = window.prompt('No API key set — the generation brief was copied to your clipboard. Paste it into Claude, then paste the returned HTML snippet here to drop it on the canvas:');
+      if(pasted) addCustomHtml(extractSnippet(pasted));
+    }
+  }
+
+  // Editor overlay injected ONLY into the preview (never into exports). Enables
+  // click-to-edit text and drag-to-move, posting changes back to the Studio.
+  // The editor runs INSIDE the preview iframe. Defined as a function here purely so
+  // we can serialize its source; it is never executed in the Studio itself.
+  function __editor(){
+    // Every visible asset is an independent, movable object.
+    var SELECT_IDS=["brand","brandSub","balPill","balCoin","chipCount","dealerLabel","playerLabel","dealerScore","playerScore","dealerHand","playerHand","tip","tipBody","wager","prompt","betRow","actionRow","winTitle","winSub","ctaBtn","ctaHint","payoutAmt"];
+    var SELECT_SEL=".bet-btn,.card,.custom-item,#btnHit,#btnStand,.chip-coin";
+    var TEXTMAP={brandSub:"subtitle",winTitle:"winTitle",ctaBtn:"ctaLabel",ctaHint:"ctaHint",prompt:"promptBet",tipBody:"tip",winSub:"winSub"};
+    var board=document.getElementById("board");
+    function scl(){ return board.getBoundingClientRect().width/480; }
+    function send(m){ parent.postMessage(m,"*"); }
+    function isCustom(el){ return el.classList.contains("custom-item"); }
+    function isText(el){ return !!(TEXTMAP[el.id] || (isCustom(el) && el.tagName!=="IMG" && el.dataset.kind!=="html")); }
+    function canMove(el){ return isCustom(el) || (el.id && el.id.length>0); }
+    function usable(el){
+      var cs=getComputedStyle(el);
+      if(cs.display==="none"||cs.visibility==="hidden") return false;
+      // own opacity 0 means hidden ONLY if not mid-animation (cards fade in via the deal animation)
+      if(parseFloat(cs.opacity)===0 && cs.animationName==="none") return false;
+      var n=el.parentElement;
+      while(n&&n!==document.body){ var p=getComputedStyle(n); if(p.display==="none"||p.visibility==="hidden"||parseFloat(p.opacity)===0) return false; n=n.parentElement; }
+      return el.getBoundingClientRect().width>1;
+    }
+    function pick(t){
+      if(!t || t===document.body || t===document.documentElement) return null;
+      var found=null;
+      if(t.closest){ var s=t.closest(SELECT_SEL); if(s) found=s; }
+      if(!found){ var n=t; while(n && n!==document.body){ if(n.id && SELECT_IDS.indexOf(n.id)>-1){ found=n; break; } n=n.parentElement; } }
+      return (found && usable(found)) ? found : null;
+    }
+    function inUI(t){ return t.closest && t.closest("#__tb,#__xb,#__col"); }
+    function editing(t){ return t.getAttribute && t.getAttribute("contenteditable")==="true"; }
+    // read/apply position offset via the `translate` property (live = source of truth)
+    function offOf(el){ if(isCustom(el)){ return {a:parseFloat(el.style.left)||0, b:parseFloat(el.style.top)||0}; }
+      var t=el.style.translate; if(t){ var m=t.split(/\s+/); return {a:parseFloat(m[0])||0, b:parseFloat(m[1])||0}; }
+      var L=(window.__LAYOUT&&window.__LAYOUT[el.id])||{}; return {a:L.dx||0, b:L.dy||0}; }
+    function applyOff(el,a,b){ if(isCustom(el)){ el.style.left=a+"px"; el.style.top=b+"px"; } else { el.style.translate=a+"px "+b+"px"; } }
+    function persistMove(el){ var o=offOf(el); if(isCustom(el)) send({type:"moveCustom",id:el.id,x:Math.round(o.a),y:Math.round(o.b)}); else send({type:"move",id:el.id,dx:Math.round(o.a),dy:Math.round(o.b)}); }
+
+    // ---- toolbar (single selection) ----
+    var sel=null, group=[];
+    var tb=document.createElement("div"); tb.id="__tb";
+    tb.style.cssText="position:absolute;z-index:100000;display:none;gap:4px;align-items:center;background:#10241a;border:1px solid #2c4a39;border-radius:8px;padding:4px;box-shadow:0 6px 16px rgba(0,0,0,.5)";
+    tb.innerHTML='<button data-a="smaller" data-txt="1" title="Smaller">A−</button><button data-a="bigger" data-txt="1" title="Bigger">A+</button><input id="__col" data-txt="1" type="color" title="Text color"><button data-a="edit" data-txt="1" title="Edit text">✏️</button><button data-a="ai" title="AI change">✨</button>';
+    Array.prototype.forEach.call(tb.querySelectorAll("button"),function(b){ b.style.cssText="background:#1d2e24;color:#fff;border:1px solid #2c4a39;border-radius:6px;padding:3px 7px;font-size:14px;cursor:pointer"; });
+    tb.querySelector('#__col').style.cssText="width:26px;height:26px;padding:0;border:1px solid #2c4a39;border-radius:6px;background:none;cursor:pointer";
+    document.body.appendChild(tb);
+    var xb=document.createElement("div"); xb.id="__xb"; xb.title="Delete"; xb.textContent="✕";
+    xb.style.cssText="position:absolute;z-index:100001;display:none;width:22px;height:22px;line-height:19px;text-align:center;border-radius:50%;background:#e8412f;color:#fff;font:700 12px sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);border:2px solid #fff";
+    document.body.appendChild(xb);
+    var marq=document.createElement("div"); marq.id="__marq"; document.body.appendChild(marq);
+
+    function tbX(el){ var r=el.getBoundingClientRect(); var txt=isText(el);
+      Array.prototype.forEach.call(tb.querySelectorAll('[data-txt]'),function(b){ b.style.display=txt?"":"none"; });
+      if(txt){ var c=getComputedStyle(el).color; try{ tb.querySelector('#__col').value=rgb2hex(c); }catch(e){} }
+      tb.style.display="flex"; tb.style.left=r.left+"px"; tb.style.top=Math.max(2,r.top-38)+"px";
+      xb.style.display="block"; xb.style.left=(r.right-11)+"px"; xb.style.top=Math.max(2,r.top-11)+"px"; }
+    function rgb2hex(c){ var m=c.match(/\d+/g); if(!m) return "#ffffff"; return "#"+m.slice(0,3).map(function(n){ return ("0"+parseInt(n).toString(16)).slice(-2); }).join(""); }
+    function showTB(el){ clearGroup(); sel=el; el.classList.add("__sel"); tbX(el); }
+    function hideTB(){ tb.style.display="none"; xb.style.display="none"; if(sel){ sel.classList.remove("__sel"); } sel=null; }
+    function clearGroup(){ group.forEach(function(g){ g.classList.remove("__sel"); }); group=[]; }
+    function clearAll(){ hideTB(); clearGroup(); }
+
+    xb.addEventListener("mousedown",function(e){ e.stopPropagation(); });
+    xb.addEventListener("click",function(e){ e.stopPropagation(); if(!sel)return; var s=sel; s.style.display="none"; send({type:"delete",id:s.id,custom:isCustom(s)}); hideTB(); });
+    function resize(el,d){ var cs=parseFloat(getComputedStyle(el).fontSize)||20; var ns=Math.max(8,Math.round(cs+d)); el.style.fontSize=ns+"px"; send({type:"size",id:el.id,custom:isCustom(el),size:ns}); tbX(el); }
+    tb.addEventListener("mousedown",function(e){ e.stopPropagation(); });
+    tb.addEventListener("click",function(e){ var a=e.target.getAttribute&&e.target.getAttribute("data-a"); if(!a||!sel)return; e.stopPropagation();
+      if(a==="ai"){ send({type:"aiSelect",id:(sel.id||sel.className),desc:(sel.id||sel.className)}); }
+      else if(a==="edit"){ startEdit(sel); }
+      else if(a==="smaller"){ resize(sel,-2); }
+      else if(a==="bigger"){ resize(sel,2); } });
+    tb.querySelector('#__col').addEventListener("input",function(e){ e.stopPropagation(); if(!sel)return; sel.style.color=e.target.value; send({type:"color",id:sel.id,custom:isCustom(sel),color:e.target.value}); });
+
+    function startEdit(el){ if(!isText(el)) return; hideTB();
+      el.setAttribute("contenteditable","true"); el.focus();
+      function done(){ el.removeAttribute("contenteditable"); el.removeEventListener("blur",done);
+        if(isCustom(el)) send({type:"textCustom",id:el.id,value:el.innerText});
+        else send({type:"text",path:TEXTMAP[el.id],value:el.innerText.trim()}); }
+      el.addEventListener("blur",done);
+      el.addEventListener("keydown",function(k){ if(k.key==="Enter"&&el.id!=="winSub"&&el.id!=="tipBody"){ k.preventDefault(); el.blur(); } }); }
+
+    function allSelectable(){ var set=[];
+      SELECT_IDS.forEach(function(id){ var el=document.getElementById(id); if(el&&usable(el)) set.push(el); });
+      Array.prototype.forEach.call(document.querySelectorAll(SELECT_SEL),function(el){ if(usable(el)&&set.indexOf(el)<0&&canMove(el)) set.push(el); });
+      return set; }
+    function intersect(a,b){ return !(a.right<b.left||a.left>b.right||a.bottom<b.top||a.top>b.bottom); }
+
+    // block game clicks while editing — capture phase
+    document.addEventListener("click",function(e){ if(inUI(e.target)||editing(e.target))return; if(pick(e.target)){ e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+
+    var mode=null, justDragged=false, cur=null, sx=0, sy=0, gbase=[], mx0=0, my0=0;
+    document.addEventListener("mouseover",function(e){ if(mode)return; var el=pick(e.target); if(el&&group.indexOf(el)<0&&el!==sel) el.classList.add("__hl"); });
+    document.addEventListener("mouseout",function(e){ var el=pick(e.target); if(el&&el!==cur&&el!==sel&&group.indexOf(el)<0) el.classList.remove("__hl"); });
+
+    document.addEventListener("mousedown",function(e){
+      if(inUI(e.target)||editing(e.target))return;
+      var el=pick(e.target);
+      if(el && group.length && group.indexOf(el)>-1){           // drag the whole group
+        e.preventDefault(); mode="group"; justDragged=false; sx=e.clientX; sy=e.clientY;
+        gbase=group.map(function(g){ var o=offOf(g); return {el:g, a:o.a, b:o.b}; }); return;
+      }
+      if(el && canMove(el)){                                     // drag single
+        e.preventDefault(); clearGroup(); mode="drag"; cur=el; justDragged=false; sx=e.clientX; sy=e.clientY;
+        var o=offOf(el); gbase=[{el:el, a:o.a, b:o.b}]; return;
+      }
+      if(el){ pend=el; return; }                                 // selectable, not movable -> select on up
+      // empty space -> start marquee
+      clearAll(); mode="marquee"; mx0=e.clientX; my0=e.clientY;
+      marq.style.display="block"; marq.style.left=mx0+"px"; marq.style.top=my0+"px"; marq.style.width="0px"; marq.style.height="0px";
+    });
+    var pend=null;
+    document.addEventListener("mousemove",function(e){
+      if(mode==="marquee"){ var x=Math.min(mx0,e.clientX), y=Math.min(my0,e.clientY), w=Math.abs(e.clientX-mx0), h=Math.abs(e.clientY-my0);
+        marq.style.left=x+"px"; marq.style.top=y+"px"; marq.style.width=w+"px"; marq.style.height=h+"px"; return; }
+      if(mode==="drag"||mode==="group"){ var k=scl();
+        if(Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy)>2) justDragged=true;
+        var da=(e.clientX-sx)/k, db=(e.clientY-sy)/k;
+        gbase.forEach(function(g){ applyOff(g.el, g.a+da, g.b+db); });
+        if(mode==="drag"&&cur){ tbX(cur); } }
+    });
+    document.addEventListener("mouseup",function(){
+      if(pend){ showTB(pend); pend=null; }
+      if(mode==="marquee"){ var mr=marq.getBoundingClientRect(); marq.style.display="none";
+        if(mr.width>6&&mr.height>6){ clearGroup(); allSelectable().forEach(function(el){ if(intersect(el.getBoundingClientRect(),mr)){ group.push(el); el.classList.add("__sel"); } });
+          if(group.length===1){ var only=group[0]; clearGroup(); showTB(only); } }
+        mode=null; return; }
+      if(mode==="drag"){ mode=null; if(justDragged&&cur){ persistMove(cur); } else if(cur){ showTB(cur); } cur=null; setTimeout(function(){ justDragged=false; },150); return; }
+      if(mode==="group"){ mode=null; if(justDragged){ send({type:"moveMany", moves: group.map(function(el){ var o=offOf(el); return {id:el.id, custom:isCustom(el), a:Math.round(o.a), b:Math.round(o.b)}; })}); } setTimeout(function(){ justDragged=false; },150); return; }
+      mode=null;
+    });
+    document.addEventListener("dblclick",function(e){ var el=pick(e.target); if(el&&isText(el)) startEdit(el); });
+  }
+  var EDITOR = '<style id="__ed">'
+    + '.__hl{outline:2px dashed rgba(120,220,255,.95)!important;outline-offset:2px;cursor:move;}'
+    + '.__sel{outline:2px solid #ffd34d!important;outline-offset:2px;cursor:move;}'
+    + '[contenteditable="true"]{outline:2px solid #ffd34d!important;background:rgba(0,0,0,.25);}'
+    + '#__marq{position:fixed;border:1.5px solid #9fe8ff;background:rgba(120,220,255,.12);z-index:99998;pointer-events:none;display:none;}'
+    + '#__hint{position:fixed;left:8px;top:8px;z-index:99999;background:rgba(0,0,0,.72);color:#9fe8ff;font:11px sans-serif;padding:5px 9px;border-radius:8px;pointer-events:none;max-width:60%;}'
+    + '</style><div id="__hint">Click = select · drag = move · drag empty space = box-select group · dbl-click text = edit</div>'
+    + '<scr'+'ipt>(' + __editor.toString() + ')();<\/scr'+'ipt>';
+  function injectEditor(html){ return html.replace('</body>', EDITOR + '</body>'); }
+
+  // persist config into currentHtml + Code tab WITHOUT reloading the preview
+  // (the canvas editor already shows the change live, so no reload needed)
+  function persist(){ currentHtml = inject(currentHtml, config); $('codeArea').value = currentHtml; autosave(); scheduleSnapshot('Edit'); }
+
+  // changes coming back from the canvas editor
+  window.addEventListener('message', function(e){
+    var d = e.data || {};
+    if(d.type === 'text'){ setPath(config, d.path, d.value); syncField(d.path); persist(); }
+    else if(d.type === 'move'){ config.layout = config.layout || {}; config.layout[d.id] = {dx:d.dx, dy:d.dy}; persist(); }
+    else if(d.type === 'moveCustom'){ var a=findCustom(d.id); if(a){ a.x=d.x; a.y=d.y; persist(); } }
+    else if(d.type === 'textCustom'){ var b=findCustom(d.id); if(b){ b.text=d.value; persist(); } }
+    else if(d.type === 'size'){
+      if(d.custom){ var c=findCustom(d.id); if(c) c.size=d.size; }
+      else { config.styles = config.styles || {}; config.styles[d.id] = Object.assign({}, config.styles[d.id], {size:d.size}); }
+      persist();
+    }
+    else if(d.type === 'color'){
+      if(d.custom){ var cc=findCustom(d.id); if(cc) cc.color=d.color; }
+      else { config.styles = config.styles || {}; config.styles[d.id] = Object.assign({}, config.styles[d.id], {color:d.color}); }
+      persist();
+    }
+    else if(d.type === 'moveMany'){
+      config.layout = config.layout || {};
+      (d.moves||[]).forEach(function(m){
+        if(m.custom){ var it=findCustom(m.id); if(it){ it.x=m.a; it.y=m.b; } }
+        else if(m.id){ config.layout[m.id] = {dx:m.a, dy:m.b}; }
+      });
+      persist(); snapshot('Moved group');
+    }
+    else if(d.type === 'delete'){
+      if(d.custom){ config.customItems = (config.customItems||[]).filter(function(it){ return it.id!==d.id; }); }
+      else { config.hidden = config.hidden || []; if(config.hidden.indexOf(d.id)<0) config.hidden.push(d.id); }
+      persist(); snapshot('Deleted item'); toast('Deleted — restore via Reset edits or History');
+    }
+    else if(d.type === 'aiSelect'){ aiOnElement(d.id, d.desc); }
+  });
+  function syncField(path){ var el = document.querySelector('[data-p="'+path+'"]'); if(el) el.value = getPath(config, path); }
+
+  // rebuild currentHtml's CONFIG block from the visual `config`, keeping any manual edits elsewhere
+  var rebuildTimer=null;
+  function rebuild(){
+    currentHtml = inject(currentHtml, config);
+    $('codeArea').value = currentHtml;
+    clearTimeout(rebuildTimer);
+    rebuildTimer = setTimeout(refreshPreview, 250);
+    autosave(); scheduleSnapshot('Edit');
+  }
+
+  // ---- visual form ----
+  var SECTIONS = [
+    { title:'Branding', fields:[
+      {p:'brandTop', label:'Brand (top)', type:'text'},
+      {p:'brandAccent', label:'Brand accent word', type:'text'},
+      {p:'subtitle', label:'Subtitle', type:'text', full:true},
+    ]},
+    { title:'Theme colors', fields:[
+      {p:'feltColor', label:'Table felt', type:'color'},
+      {p:'accentColor', label:'Accent (gold)', type:'color'},
+      {p:'ctaColor', label:'CTA button', type:'color'},
+    ]},
+    { title:'Economy', fields:[
+      {p:'balance', label:'Starting balance', type:'number'},
+      {p:'payoutMultiplier', label:'Payout × bet', type:'number'},
+      {p:'bets.0', label:'Bet chip 1', type:'number'},
+      {p:'bets.1', label:'Bet chip 2', type:'number'},
+      {p:'bets.2', label:'Bet chip 3', type:'number'},
+    ]},
+    { title:'Cards — rank+suit, e.g. 10S · AH · KD · 7C', fields:[
+      {p:'player.up', label:'Player card 1', type:'text'},
+      {p:'player.hidden', label:'Player card 2 (revealed)', type:'text'},
+      {p:'player.hit', label:'Player hit card', type:'text'},
+      {p:'dealer.up', label:'Dealer up card', type:'text'},
+      {p:'dealer.hidden', label:'Dealer hole card', type:'text'},
+      {p:'dealer.draw', label:'Dealer draw card', type:'text'},
+    ]},
+    { title:'Copy', fields:[
+      {p:'tip', label:'Strategist tip', type:'textarea', full:true},
+      {p:'promptBet', label:'Bet prompt', type:'text', full:true},
+      {p:'promptMove', label:'Move prompt', type:'text', full:true},
+      {p:'winTitle', label:'Win title', type:'text'},
+      {p:'ctaLabel', label:'CTA label', type:'text'},
+      {p:'winSub', label:'Win subtitle (HTML ok)', type:'textarea', full:true},
+      {p:'ctaHint', label:'CTA hint', type:'text', full:true},
+    ]},
+    { title:'Network', fields:[
+      {p:'network', label:'Network', type:'select', options:['facebook','applovin','apple','generic']},
+      {p:'ctaUrl', label:'Store / landing URL', type:'text', full:true},
+    ]},
+  ];
+
+  function buildForm(){
+    var html = '';
+    SECTIONS.forEach(function(sec){
+      html += '<div class="section"><h3>' + sec.title + '</h3><div class="grid2">';
+      sec.fields.forEach(function(f){
+        var val = getPath(config, f.p);
+        if(val == null) val = '';
+        var cls = 'field' + (f.full ? ' full' : '');
+        var input;
+        if(f.type === 'textarea'){
+          input = '<textarea data-p="'+f.p+'">'+escapeHtml(val)+'</textarea>';
+        } else if(f.type === 'select'){
+          input = '<select data-p="'+f.p+'">'+f.options.map(function(o){ return '<option'+(o===val?' selected':'')+'>'+o+'</option>'; }).join('')+'</select>';
+        } else {
+          input = '<input data-p="'+f.p+'" type="'+f.type+'" value="'+escapeHtml(val)+'">';
+        }
+        html += '<div class="'+cls+'"><label>'+f.label+'</label>'+input+'</div>';
+      });
+      html += '</div>';
+      if(sec.title.indexOf('Copy') === 0) html += '<p class="hint">Tokens auto-fill from the cards: <code>{pUp}</code> player card 1, <code>{pReveal}</code> total after reveal, <code>{pHit}</code> total after hit, <code>{dUp}</code> dealer up. <code>{accent}</code>…<code>{/accent}</code> highlights text.</p>';
+      html += '</div>';
+    });
+    $('visualForm').innerHTML = html;
+
+    $('visualForm').querySelectorAll('[data-p]').forEach(function(el){
+      var ev = (el.type === 'color' || el.tagName === 'SELECT') ? 'input' : 'input';
+      el.addEventListener(ev, function(){
+        var p = el.dataset.p;
+        var v = el.value;
+        if(el.type === 'number') v = Number(v);
+        setPath(config, p, v);
+        rebuild();
+      });
+    });
+  }
+  function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // ---- code tab ----
+  function applyCode(){ currentHtml = $('codeArea').value; refreshPreview(); autosave(); snapshot('Code edit'); toast('Preview updated from code'); }
+  function formatFromVisual(){ rebuild(); refreshPreview(); toast('Rebuilt source from Visual settings'); }
+  function downloadCurrent(){ download(fileBase()+'.html', currentHtml); }
+
+  // ---- AI ----
+  function brief(kind){
+    if(kind === 'review'){
+      return "You are reviewing an HTML5 playable ad (single self-contained file for Meta/AppLovin). "
+        + "Review it for: (1) Meta/AppLovin compliance — must be one file, no external network requests/assets; "
+        + "(2) UX clarity of the 15–20s flow; (3) performance; (4) conversion/CTA strength. "
+        + "List concrete issues and exact fixes. Here is the file:\n\n" + currentHtml;
+    }
+    var instr = $('aiPrompt').value.trim() || "Improve the ad’s polish and conversion while keeping it a single self-contained file.";
+    return "Here is an HTML5 playable ad (single self-contained file). Apply this change:\n\n"
+      + instr + "\n\n"
+      + "Return the COMPLETE updated single-file HTML only, in one ```html code block. Keep it self-contained (no external assets) and keep the //CONFIG_START…//CONFIG_END block intact. File:\n\n" + currentHtml;
+  }
+  function copyBrief(kind){
+    navigator.clipboard.writeText(brief(kind)).then(function(){
+      toast('Copied — paste into Claude Code to get your '+(kind==='review'?'review':'updated file'));
+    }, function(){ toast('Copy failed — select the Code tab and copy manually'); });
+  }
+
+  function runAI(kind){
+    var key = $('apiKey').value.trim();
+    if(!key){
+      $('aiOut').innerHTML = '<span class="warn">No API key entered.</span>\n\nThis "Run live" box needs your own Anthropic API key (paste it in the field above).\n\nNo key? Use <b>📋 Copy edit brief → paste in Claude</b> instead — that works with zero setup: it copies your file + instruction so you can paste it into this Claude chat and get the updated file back.';
+      toast('Enter an API key — or use “Copy brief” (no key needed)');
+      return;
+    }
+    if(key.indexOf('sk-ant') !== 0){ toast('That doesn’t look like an Anthropic key (sk-ant-…) — trying anyway'); }
+    localStorage.setItem('anthropic_key', key);
+    var model = $('apiModel').value;
+    $('aiStatus').textContent = 'Calling '+model+'…';
+    $('aiOut').textContent = 'Working…';
+    fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'content-type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:model, max_tokens:16000, messages:[{ role:'user', content:brief(kind) }] })
+    }).then(function(r){ return r.json(); }).then(function(data){
+      $('aiStatus').textContent = '';
+      if(data.error){ $('aiOut').textContent = 'API error: ' + (data.error.message||JSON.stringify(data.error)); return; }
+      var text = (data.content||[]).map(function(b){ return b.text||''; }).join('\n').trim();
+      if(kind === 'review'){ $('aiOut').textContent = text; toast('Review ready'); return; }
+      var m = text.match(/```(?:html)?\s*([\s\S]*?)```/);
+      var code = m ? m[1].trim() : (text.indexOf('<!DOCTYPE')>=0 ? text : null);
+      if(code){ currentHtml = code; $('codeArea').value = code; refreshPreview(); autosave(); snapshot('AI edit'); $('aiOut').textContent = 'Applied AI edit to the Code tab and preview.'; toast('AI edit applied'); }
+      else { $('aiOut').textContent = 'No HTML code block detected in the response:\n\n' + text; }
+    }).catch(function(e){
+      $('aiStatus').textContent = '';
+      $('aiOut').textContent = 'Request failed: ' + e.message + '\n\n(If this is a CORS/network error, use the “Copy brief” buttons above instead.)';
+    });
+  }
+
+  // ---- export ----
+  function fileBase(){ return (SRC.split('/').pop()||'playable').replace(/\.html$/,''); }
+  function exportFor(net){
+    var cfg = JSON.parse(JSON.stringify(config));
+    cfg.network = net;
+    var url = $('expUrl').value.trim();
+    if(url) cfg.ctaUrl = url;
+    var html = inject(currentHtml, cfg);
+    download(fileBase()+'-'+net+'.html', html);
+    toast('Downloaded '+net+' build');
+  }
+  function exportAll(){ ['facebook','applovin','apple','generic'].forEach(function(n,i){ setTimeout(function(){ exportFor(n); }, i*350); }); }
+
+  function preflight(){
+    var issues = [];
+    var ext = currentHtml.match(/(?:src|href)\s*=\s*["']https?:\/\/[^"']+/gi) || [];
+    var cssUrl = currentHtml.match(/url\(\s*https?:\/\/[^)]+/gi) || [];
+    var fetches = currentHtml.match(/\b(fetch|XMLHttpRequest|WebSocket)\b/g) || [];
+    if(ext.length) issues.push('⚠ '+ext.length+' external src/href link(s): '+ext.slice(0,3).join(', ')+(ext.length>3?'…':''));
+    if(cssUrl.length) issues.push('⚠ '+cssUrl.length+' external url() in CSS');
+    if(fetches.length) issues.push('⚠ Found network calls ('+[...new Set(fetches)].join(', ')+') — Meta strips these');
+    var kb = Math.round(currentHtml.length/1024);
+    var out = $('preflight');
+    if(!issues.length){ out.innerHTML = '<span class="ok">✓ Self-contained — no external assets or network calls detected.</span><br>File size: '+kb+' KB (Meta limit ~2 MB).'; }
+    else { out.innerHTML = issues.join('<br>') + '<br>File size: '+kb+' KB.'; }
+  }
+
+  // ---- misc ----
+  function download(name, text){ var b=new Blob([text],{type:'text/html'}); var u=URL.createObjectURL(b); var a=document.createElement('a'); a.href=u; a.download=name; a.click(); setTimeout(function(){ URL.revokeObjectURL(u); },1000); }
+  var toastTimer=null;
+  function toast(msg){ var t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(function(){ t.classList.remove('show'); },2400); }
+
+  // tabs
+  document.querySelectorAll('.tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+      document.querySelectorAll('.pane').forEach(function(p){ p.classList.remove('active'); });
+      tab.classList.add('active');
+      $('pane-'+tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ---- boot ----
+  fetch(SRC).then(function(r){ return r.text(); }).then(function(html){
+    baseTemplate = html;
+    var savedDoc = lsGet(DOC_KEY);
+    if(savedDoc){ currentHtml = savedDoc; try { config = parseConfig(savedDoc); } catch(e){ config = parseConfig(baseTemplate); currentHtml = inject(baseTemplate, config); } }
+    else { config = parseConfig(baseTemplate); currentHtml = inject(baseTemplate, config); }
+    $('codeArea').value = currentHtml;
+    $('expUrl').value = config.ctaUrl || '';
+    var savedKey = localStorage.getItem('anthropic_key'); if(savedKey) $('apiKey').value = savedKey;
+    loadHistory(); if(!versions.length){ snapshot('Original'); }
+    buildForm();
+    refreshPreview();
+    renderHistory();
+    setSaved(savedDoc ? 'Saved ✓ (restored)' : '');
+    if(savedDoc) toast('Restored your saved edits for this creative');
+  }).catch(function(e){
+    document.querySelector('.panes').innerHTML = '<div class="note warn">Could not load source “'+SRC+'”.<br>'+e.message+'<br><br>Open the Studio through a local web server (not file://), e.g. via the Gallery.</div>';
+  });
+</script>
+</body>
+</html>

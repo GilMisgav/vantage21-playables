@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>UGC Animatic — "The Rant"</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+  html,body { width:100%; height:100%; overflow:hidden; }
+  body { font-family:"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; background:#000; display:flex; align-items:center; justify-content:center; }
+
+  #stage { position:fixed; inset:0; overflow:hidden; background:#000; display:flex; align-items:center; justify-content:center; }
+  #board { position:relative; width:405px; height:720px; flex:none; overflow:hidden; transform-origin:center center; background:#0b0b12; border-radius:6px; box-shadow:0 30px 80px rgba(0,0,0,.6); }
+  #shake { position:absolute; inset:-16px; animation:hand 6s ease-in-out infinite; }
+  @keyframes hand { 0%{transform:translate(0,0) rotate(0)} 25%{transform:translate(2px,-2px) rotate(.25deg)} 50%{transform:translate(-2px,1px) rotate(-.2deg)} 75%{transform:translate(2px,2px) rotate(.18deg)} 100%{transform:translate(0,0) rotate(0)} }
+  .vignette { position:absolute; inset:0; z-index:14; pointer-events:none; box-shadow:inset 0 0 130px rgba(0,0,0,.6); }
+  .grain { position:absolute; inset:0; z-index:14; pointer-events:none; opacity:.045; background-image:radial-gradient(#fff 1px,transparent 1px); background-size:3px 3px; mix-blend-mode:overlay; }
+
+  .scene { position:absolute; inset:0; opacity:0; transition:opacity .5s ease; }
+  .scene.show { opacity:1; }
+
+  /* ---- creator scene (hook + pain) ---- */
+  #creator { background:radial-gradient(ellipse at 50% 36%, #6a2230, #2a1018 60%, #160a0e); z-index:2; }
+  #creator.calm { background:radial-gradient(ellipse at 50% 36%, #1c5e3e, #0c3a26 60%, #06231a); }
+  .cbg { position:absolute; inset:-6%; animation:ken 16s ease-in-out infinite alternate; }
+  @keyframes ken { 0%{transform:scale(1)} 100%{transform:scale(1.12)} }
+  .avatar { position:absolute; top:120px; left:50%; transform:translateX(-50%); width:150px; height:150px; border-radius:50%;
+    background:radial-gradient(circle at 38% 30%, #ffe7bd, #f0b878 70%, #e09a55); display:flex; align-items:center; justify-content:center; font-size:88px;
+    box-shadow:0 18px 50px rgba(0,0,0,.55), inset 0 -8px 18px rgba(150,90,40,.35), inset 0 0 0 5px rgba(255,255,255,.28); z-index:3; animation:breathe 3.4s ease-in-out infinite; }
+  @keyframes breathe { 0%,100%{transform:translateX(-50%) scale(1)} 50%{transform:translateX(-50%) scale(1.03)} }
+  .avatar.pop { animation:apop .45s cubic-bezier(.2,.9,.3,1.6); }
+  @keyframes apop { 0%{transform:translateX(-50%) scale(1)} 45%{transform:translateX(-50%) scale(1.15) rotate(-3deg)} 100%{transform:translateX(-50%) scale(1)} }
+  .handle { position:absolute; top:286px; left:50%; transform:translateX(-50%); color:#fff; font-size:13px; font-weight:700; opacity:.92; z-index:3; text-shadow:0 1px 3px rgba(0,0,0,.6); }
+  .handle .v { color:#5ac8ff; }
+
+  /* ---- game scene (skill + win) ---- */
+  #game { background:radial-gradient(ellipse 120% 95% at 50% 38%, #2a8f5c, #0d4e30 66%, #06301d); z-index:3; }
+  #game::before { content:""; position:absolute; inset:0; background-image:radial-gradient(rgba(255,255,255,.045) 1px,transparent 1px); background-size:4px 4px; opacity:.5; }
+  .ghead { position:absolute; top:18px; left:0; right:0; text-align:center; z-index:3; }
+  .ghead .nm { color:#f6e7b5; font-size:20px; font-weight:900; letter-spacing:1px; } .ghead .nm span{color:#ffd34d}
+  .ribbon { display:inline-flex; gap:8px; margin-top:8px; }
+  .ribbon b { background:rgba(0,0,0,.35); border:1px solid rgba(159,232,255,.5); color:#bff0ff; font-size:10px; font-weight:800; letter-spacing:1px; padding:4px 9px; border-radius:20px; }
+  .gscore { position:absolute; top:96px; left:0; right:0; display:flex; justify-content:center; gap:40px; z-index:3; color:#fff; text-align:center; }
+  .gscore .lab { font-size:10px; letter-spacing:2px; color:rgba(255,255,255,.7); font-weight:800; }
+  .gscore .num { font-size:30px; font-weight:900; }
+  .gscore .num.win { color:#7CFC9E; } .gscore .num.bust { color:#ff7a6b; }
+  .skillpill { position:absolute; top:168px; left:50%; transform:translateX(-50%); z-index:5; display:flex; align-items:center; gap:8px;
+    background:linear-gradient(180deg,#2bd9ff,#128fb8); color:#042b38; font-weight:900; font-size:13px; padding:9px 16px; border-radius:24px; box-shadow:0 6px 18px rgba(0,0,0,.4); white-space:nowrap; opacity:0; }
+  .skillpill.show { opacity:1; animation:spin2 1.1s ease-in-out infinite; }
+  @keyframes spin2 { 0%,100%{box-shadow:0 6px 18px rgba(0,0,0,.4),0 0 0 0 rgba(120,220,255,.5); transform:translateX(-50%) scale(1)} 50%{box-shadow:0 6px 18px rgba(0,0,0,.4),0 0 22px 5px rgba(120,220,255,.8); transform:translateX(-50%) scale(1.05)} }
+  .cards { position:absolute; top:236px; left:0; right:0; display:flex; justify-content:center; z-index:3; }
+  .pcard { width:58px; height:82px; margin:0 -6px; border-radius:8px; background:#fdfdfb; box-shadow:0 8px 16px rgba(0,0,0,.45); position:relative; font-weight:800; animation:cdeal .4s cubic-bezier(.2,.9,.25,1.4) both; }
+  @keyframes cdeal { 0%{opacity:0; transform:translateY(-26px) rotate(7deg)} 100%{opacity:1; transform:none} }
+  .pcard .r { position:absolute; top:6px; left:7px; font-size:16px; } .pcard .s { position:absolute; bottom:6px; right:7px; font-size:16px; transform:rotate(180deg); }
+  .pcard .big { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:30px; }
+  .red{color:#d4202b} .blk{color:#1c1c1c}
+  .result { position:absolute; top:344px; left:0; right:0; text-align:center; z-index:5; opacity:0; }
+  .result b { display:inline-block; background:#eafff1; color:#0a3; font-weight:900; font-size:22px; padding:6px 18px; border-radius:24px; box-shadow:0 8px 20px rgba(0,0,0,.4); }
+  .result.show b { animation:rpop .6s cubic-bezier(.2,.9,.3,1.6); }
+  @keyframes rpop { 0%{opacity:0; transform:scale(.7)} 100%{opacity:1; transform:scale(1)} }
+  .winflash { position:absolute; inset:0; background:radial-gradient(circle at 50% 42%, rgba(124,252,158,.4), transparent 60%); opacity:0; z-index:1; }
+  .winflash.go { animation:wf 1.1s ease; } @keyframes wf { 0%,100%{opacity:0} 35%{opacity:1} }
+
+  /* ---- CTA scene ---- */
+  #cta { background:radial-gradient(ellipse at 50% 40%, rgba(18,80,50,.97), rgba(3,16,11,.99)); z-index:6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
+  #cta .av { width:120px; height:120px; border-radius:50%; background:radial-gradient(circle at 38% 30%, #ffe7bd, #f0b878 70%, #e09a55); display:flex; align-items:center; justify-content:center; font-size:70px; box-shadow:0 14px 40px rgba(0,0,0,.5), inset 0 0 0 5px rgba(255,255,255,.28); }
+  #cta h2 { color:#fff; font-size:25px; font-weight:900; text-align:center; line-height:1.15; margin-top:4px; } #cta h2 span{color:#ffd34d}
+  #cta .arrow { font-size:30px; animation:arr 1s ease-in-out infinite; } @keyframes arr { 0%,100%{transform:translateY(0)} 50%{transform:translateY(8px)} }
+  #cta .store { display:flex; align-items:center; gap:10px; background:#000; border:1px solid rgba(255,255,255,.25); color:#fff; padding:11px 22px; border-radius:14px;
+    box-shadow:0 8px 22px rgba(0,0,0,.5); animation:cpulse 1.2s ease-in-out infinite; }
+  #cta .store . apl{ font-size:26px; } #cta .store small{ display:block; font-size:9px; opacity:.8; letter-spacing:.5px; } #cta .store b{ font-size:16px; font-weight:800; }
+  @keyframes cpulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+  #cta .sub { color:rgba(255,255,255,.72); font-size:12px; }
+
+  /* ---- global overlays ---- */
+  .moodtint { position:absolute; inset:0; z-index:9; pointer-events:none; background:radial-gradient(ellipse at 50% 40%, transparent 45%, rgba(180,20,20,.28)); opacity:0; transition:opacity .5s; }
+  .moodtint.on { opacity:1; }
+  .rec { position:absolute; top:14px; left:14px; display:flex; align-items:center; gap:6px; font-size:12px; font-weight:800; color:#fff; letter-spacing:1px; z-index:12; text-shadow:0 1px 3px rgba(0,0,0,.7); }
+  .rec .dot { width:9px; height:9px; border-radius:50%; background:#ff3b3b; box-shadow:0 0 8px #ff3b3b; animation:blink 1s steps(1) infinite; }
+  @keyframes blink { 50%{opacity:.2} }
+  .live2 { position:absolute; top:13px; right:14px; z-index:12; font-size:10px; font-weight:900; letter-spacing:1px; color:#fff; background:rgba(255,59,59,.9); padding:3px 8px; border-radius:5px; }
+  .vo { position:absolute; left:16px; right:16px; bottom:16px; z-index:12; text-align:center; }
+  .vo span { display:inline; background:rgba(0,0,0,.68); color:#fff; font-size:15.5px; font-weight:700; line-height:1.5; padding:5px 10px; border-radius:7px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+  .vo.in span { animation:voin .4s ease; } @keyframes voin { 0%{opacity:0; transform:translateY(8px)} 100%{opacity:1} }
+  .caption { position:absolute; left:16px; right:16px; top:60%; z-index:13; text-align:center; pointer-events:none; }
+  .caption b { display:inline-block; background:#fff; color:#13131a; font-size:21px; font-weight:900; line-height:1.2; padding:8px 14px; border-radius:12px; box-shadow:0 8px 22px rgba(0,0,0,.55); transform:rotate(-2deg); opacity:0; }
+  .caption b em { font-style:normal; color:#1aa34a; }
+  .caption b.warn em { color:#e8421f; }
+  .caption b.show { animation:cap .55s cubic-bezier(.2,.9,.3,1.6) forwards; }
+  @keyframes cap { 0%{opacity:0; transform:rotate(-2deg) scale(.6)} 60%{transform:rotate(-2deg) scale(1.08)} 100%{opacity:1; transform:rotate(-2deg) scale(1)} }
+  .progress { position:absolute; top:0; left:0; height:4px; background:linear-gradient(90deg,#7CFC9E,#ffd34d); width:0; z-index:15; box-shadow:0 0 10px rgba(255,211,77,.9); }
+  .disc { position:absolute; left:0; right:0; bottom:0; z-index:15; text-align:center; font-size:8px; letter-spacing:.3px; color:rgba(255,255,255,.72); background:rgba(0,0,0,.5); padding:3px 4px; }
+  .confetti { position:absolute; top:-12px; width:8px; height:13px; z-index:11; opacity:0; }
+  .replay { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); z-index:15; color:rgba(255,255,255,.45); font-size:11px; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="board"><div id="shake">
+
+  <div class="progress" id="prog"></div>
+
+  <!-- CREATOR -->
+  <div class="scene show" id="creator">
+    <div class="cbg"></div>
+    <div class="avatar" id="avatar">😤</div>
+    <div class="handle">@cardshark.kev <span class="v">✔</span></div>
+  </div>
+
+  <!-- GAME -->
+  <div class="scene" id="game">
+    <div class="ghead"><div class="nm">VANTAGE <span>21</span></div><div class="ribbon"><b>100% SKILL</b><b>NO RNG 🧠</b></div></div>
+    <div class="gscore">
+      <div><div class="lab">DEALER</div><div class="num" id="dnum">10</div></div>
+      <div><div class="lab">YOU</div><div class="num" id="pnum">15</div></div>
+    </div>
+    <div class="skillpill" id="skill">⚡ SKILL READY — outplay the dealer</div>
+    <div class="cards" id="cards"></div>
+    <div class="result" id="result"><b id="resultText">DEALER BUSTS — YOU WIN</b></div>
+    <div class="winflash" id="winflash"></div>
+  </div>
+
+  <!-- CTA -->
+  <div class="scene" id="cta">
+    <div class="av">😎</div>
+    <h2>Prove them <span>wrong.</span></h2>
+    <div class="arrow">👇</div>
+    <div class="store"><span class="apl">⬇️</span><span><small>Download on the</small><b>App Store</b></span></div>
+    <div class="sub">It's skill. Show them what you got.</div>
+  </div>
+
+  <!-- global overlays -->
+  <div class="moodtint" id="moodtint"></div>
+  <div class="rec"><span class="dot"></span>REC <span id="tc">0:00</span></div>
+  <div class="live2">● LIVE</div>
+  <div class="caption"><b id="cap"></b></div>
+  <div class="vo in"><span id="vo">…</span></div>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+  <div class="disc">Dramatization. 18+ only. Play responsibly. Skill-based; outcomes not typical or guaranteed.</div>
+
+  <div class="replay">↻ tap to replay</div>
+
+</div></div></div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  function fit(){ var s=$('stage'); var k=Math.min(s.clientWidth/405, s.clientHeight/720); $('board').style.transform='scale('+k+')'; }
+  window.addEventListener('resize', fit); fit();
+
+  var SUIT={S:{c:'♠',k:'blk'},H:{c:'♥',k:'red'},D:{c:'♦',k:'red'},C:{c:'♣',k:'blk'}};
+  function card(rank,su,i){ var s=SUIT[su]; return '<div class="pcard '+s.k+'" style="animation-delay:'+(i*0.08)+'s"><span class="r">'+rank+'</span><span class="big">'+s.c+'</span><span class="s">'+s.c+'</span></div>'; }
+  function pulse(el,cls){ if(!el)return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+  function showScene(name){ ['creator','game','cta'].forEach(function(s){ $(s).classList.toggle('show', s===name); }); }
+
+  var beats = [
+    { t:0,     tc:'0:00', scene:'creator', mood:true,  calm:false, face:'😤',
+      vo:"That's it. I'm deleting every casino app on my phone. They're all rigged.", cap:'DELETING EVERYTHING <em>❌</em>', warn:true },
+    { t:3000,  tc:'0:03', scene:'creator', mood:true,  calm:false, face:'🤬',
+      vo:"How many times can you get a hard 15 vs a dealer 10?! Sick of losing to 'bad luck'. Then I found this.", cap:'hard 15 vs 10?! <em>🤯</em>', warn:true },
+    { t:8000,  tc:'0:08', scene:'game',    mood:false, calm:true,  face:'🤨',
+      vo:"It's Vantage 21 — first skill-based blackjack. Zero RNG. Real tools to flip the odds.", cap:'100% SKILL · <em>NO RNG 🧠</em>', game:'skill' },
+    { t:15000, tc:'0:15', scene:'game',    mood:false, calm:true,  face:'😲',
+      vo:"Boom! In regular blackjack that's a guaranteed loss. I outsmarted the dealer. Pure skill.", cap:'BOOM! <em>outsmarted the dealer 🔥</em>', game:'win' },
+    { t:22000, tc:'0:22', scene:'cta',     mood:false, calm:true,  face:'😎',
+      vo:"Tired of being played by the system? Prove you can actually play. Link's right below.", cap:'PROVE THEM WRONG <em>👇</em>', end:true }
+  ];
+  var END=30000, timers=[];
+
+  function setGame(state){
+    if(state==='skill'){
+      $('dnum').textContent='10'; $('dnum').className='num';
+      $('pnum').textContent='15'; $('pnum').className='num';
+      $('skill').classList.add('show');
+      $('cards').innerHTML = card('10','S',0)+card('5','H',1);
+      $('result').classList.remove('show');
+    } else if(state==='win'){
+      $('skill').classList.remove('show');
+      $('pnum').textContent='21'; $('pnum').className='num win';
+      $('dnum').textContent='26'; $('dnum').className='num bust';
+      $('cards').innerHTML = card('10','S',0)+card('5','H',1)+card('6','C',2);
+      $('resultText').textContent='DEALER BUSTS · YOU WIN';
+      pulse($('result'),'show'); pulse($('winflash'),'go'); burst();
+    }
+  }
+
+  function applyBeat(b){
+    $('tc').textContent=b.tc;
+    showScene(b.scene);
+    $('moodtint').classList.toggle('on', b.mood);
+    $('creator').classList.toggle('calm', b.calm);
+    if(b.scene==='creator') { var av=$('avatar'); av.textContent=b.face; pulse(av,'pop'); }
+    $('vo').textContent=b.vo; pulse(document.querySelector('.vo'),'in');
+    var cap=$('cap'); cap.innerHTML=b.cap; cap.classList.toggle('warn', !!b.warn); pulse(cap,'show');
+    if(b.game) setGame(b.game);
+    if(b.end) endConfetti();
+  }
+
+  function burst(){ var g=$('game'); var cols=['#ffd34d','#7CFC9E','#fff','#5ac8ff'];
+    for(var i=0;i<18;i++){ var d=document.createElement('div'); d.className='confetti'; d.style.left=(30+Math.random()*40)+'%'; d.style.top='48%'; d.style.background=cols[i%cols.length]; d.style.opacity='1'; d.style.transition='all 1s ease'; g.appendChild(d);
+      (function(el){ setTimeout(function(){ el.style.transform='translate('+(Math.random()*180-90)+'px,'+(Math.random()*140-30)+'px) rotate('+(Math.random()*360)+'deg)'; el.style.opacity='0'; },20); setTimeout(function(){ el.remove(); },1100); })(d); } }
+  function endConfetti(){ var es=$('cta'); var cols=['#ffd34d','#41d97a','#ff6b6b','#5ac8ff','#fff'];
+    for(var i=0;i<26;i++){ var c=document.createElement('div'); c.className='confetti'; c.style.left=(Math.random()*100)+'%'; c.style.background=cols[i%cols.length]; c.style.opacity='1'; c.style.transition='all '+(1.4+Math.random()*1.2)+'s ease'; es.appendChild(c);
+      (function(el){ setTimeout(function(){ el.style.transform='translateY(740px) rotate('+(Math.random()*720)+'deg)'; el.style.opacity='0'; },20); setTimeout(function(){ el.remove(); },2800); })(c); } }
+
+  function perfNow(){ return (window.performance&&performance.now)?performance.now():0; }
+  function progress(){ var start=perfNow(); (function tick(){ var p=Math.min(1,(perfNow()-start)/END); $('prog').style.width=(p*100)+'%'; if(p<1) timers.push(setTimeout(tick,60)); })(); }
+
+  function play(){
+    timers.forEach(clearTimeout); timers=[];
+    showScene('creator'); $('skill').classList.remove('show'); $('result').classList.remove('show'); $('prog').style.width='0';
+    beats.forEach(function(b){ timers.push(setTimeout(function(){ applyBeat(b); }, b.t)); });
+    progress();
+    timers.push(setTimeout(play, END+2800));
+  }
+  document.addEventListener('click', play);
+  window.addEventListener('load', function(){ setTimeout(play, 300); });
+})();
+</script>
+</body>
+</html>

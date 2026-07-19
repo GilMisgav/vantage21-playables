@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phone Frame Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    background: radial-gradient(ellipse at 50% 0%, #16271d, #0c1410 60%);
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 24px; color: #e9f3ec;
+  }
+  .bar { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
+  .bar h1 { font-size: 16px; font-weight: 700; }
+  .bar a, .bar button {
+    background: #1d2e24; color: #e9f3ec; border: 1px solid #25372b;
+    padding: 8px 14px; border-radius: 9px; font-size: 13px; font-weight: 700;
+    text-decoration: none; cursor: pointer;
+  }
+  .bar button.replay { background: #41d97a; color: #06210f; border: 0; }
+  .phone {
+    width: 390px; height: 760px; max-width: 92vw;
+    border-radius: 44px; padding: 12px;
+    background: linear-gradient(145deg, #2a2a2a, #0d0d0d);
+    box-shadow: 0 30px 70px rgba(0,0,0,.6), inset 0 0 0 2px #3a3a3a;
+    position: relative;
+  }
+  .phone::before {
+    content: ""; position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    width: 130px; height: 26px; background: #0d0d0d; border-radius: 0 0 16px 16px; z-index: 2;
+  }
+  .phone iframe { width: 100%; height: 100%; border: 0; border-radius: 32px; background: #07100b; }
+  .hint { color: #8aa595; font-size: 12px; margin-top: 16px; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <h1 id="title">Preview</h1>
+    <button class="replay" onclick="reload()">↻ Replay</button>
+    <a id="openLink" href="#" target="_blank" rel="noopener">Open raw ↗</a>
+    <a href="index.html">← Gallery</a>
+  </div>
+  <div class="phone"><iframe id="frame"></iframe></div>
+  <div class="hint">Approximate phone viewport (390×760). Use ↻ Replay to restart the playable.</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const src = params.get('src') || '';
+  const title = params.get('title') || 'Preview';
+  document.getElementById('title').textContent = title;
+  document.getElementById('openLink').href = src;
+  const frame = document.getElementById('frame');
+  frame.src = src;
+  function reload(){ frame.src = 'about:blank'; setTimeout(() => frame.src = src, 60); }
+</script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Device Preview — Vantage 21 Playables</title>
+<style>
+  :root { --bg:#08080d; --panel:#14101f; --line:#2a2440; --violet:#8b5cf6; --soft:#a78bfa; --ink:#e9e7f0; --dim:#9b97ad; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; }
+  body { font-family:-apple-system, "Segoe UI", Roboto, Arial, sans-serif; background:radial-gradient(ellipse at 50% -10%, #16122a, var(--bg) 60%);
+         color:var(--ink); height:100vh; overflow:hidden; display:flex; flex-direction:column; }
+
+  header { display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--line); }
+  header .brand { font-family:Georgia, serif; font-weight:600; font-size:18px; letter-spacing:1px; }
+  header .brand em { font-style:italic; color:var(--soft); }
+  header .sub { font-size:12px; color:var(--dim); }
+  select, input[type=number], button.tool {
+    background:var(--panel); border:1px solid var(--line); color:var(--ink); border-radius:9px;
+    padding:8px 12px; font-size:13px; font-family:inherit; }
+  button.tool { cursor:pointer; }
+  button.tool:hover { border-color:var(--soft); }
+  button.tool.active { background:var(--violet); border-color:var(--violet); color:#fff; font-weight:700; }
+
+  #toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:12px 20px; }
+  #toolbar .grp { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  #toolbar .lbl { font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-right:2px; }
+  #toolbar .divider { width:1px; height:26px; background:var(--line); margin:0 8px; }
+  #dims { font-size:12px; color:var(--dim); font-variant-numeric:tabular-nums; }
+
+  #stagewrap { flex:1; display:flex; align-items:center; justify-content:center; padding:24px; overflow:hidden; min-height:0; }
+  #device {
+    position:relative; background:#000; border-radius:38px; padding:14px;
+    box-shadow:0 24px 80px rgba(0,0,0,.6), 0 0 0 2px #26203a, inset 0 0 0 2px #0a0812;
+    transform-origin:center center; flex:none;
+  }
+  #device.bare { background:transparent; border-radius:0; padding:0; box-shadow:none; }
+  #device .notch { position:absolute; top:14px; left:50%; transform:translateX(-50%); width:32%; height:22px;
+    background:#000; border-radius:0 0 14px 14px; z-index:2; pointer-events:none; }
+  #device.bare .notch { display:none; }
+  iframe { display:block; border:0; background:#08080d; border-radius:24px; }
+  #device.bare iframe { border-radius:0; }
+
+  footer { padding:10px 20px 16px; font-size:11px; color:var(--dim); line-height:1.6; }
+  footer b { color:var(--soft); }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">VANTAGE<em>21</em> &nbsp;·&nbsp; Playables Device Preview</div>
+    <div class="sub">Pick a creative, pick a resolution — the ✎ editor works right inside the frame.</div>
+  </header>
+
+  <div id="toolbar">
+    <div class="grp">
+      <span class="lbl">Creative</span>
+      <select id="creative"></select>
+    </div>
+    <div class="divider"></div>
+    <div class="grp" id="presets"><span class="lbl">Resolution</span></div>
+    <div class="divider"></div>
+    <div class="grp">
+      <span class="lbl">Custom</span>
+      <input type="number" id="cw" min="200" max="2000" value="480" style="width:76px"> ×
+      <input type="number" id="ch" min="200" max="2000" value="854" style="width:76px">
+      <button class="tool" id="applyCustom">Apply</button>
+    </div>
+    <div class="divider"></div>
+    <div class="grp">
+      <button class="tool" id="rotate">⟳ Rotate</button>
+      <button class="tool" id="frameToggle">📱 Frame</button>
+      <button class="tool" id="reload">↺ Reload</button>
+      <span id="dims"></span>
+    </div>
+  </div>
+
+  <div id="stagewrap">
+    <div id="device">
+      <div class="notch"></div>
+      <iframe id="frame" title="playable preview"></iframe>
+    </div>
+  </div>
+
+  <footer>
+    <b>How it scales:</b> every playable auto-fits any viewport, so what you see per resolution is exactly what Meta renders on that device.
+    · <b>Editing:</b> open the ✎ pencil inside the frame to change hands, text, buttons and outcomes, then <b>⬇ Download Facebook build</b> from the editor to get the upload-ready file.
+    · <b>Shipping:</b> upload the single .html in Meta Ads Manager → playable source.
+  </footer>
+
+<script>
+(function(){
+  var CREATIVES = [
+    { label: "Vantage 21 — What Would You Do?", file: "variations/vantage21-what-would-you-do.html" },
+    { label: "BJ Switch — Build Your Hands",    file: "variations/bjswitch-build-your-hands.html" },
+    { label: "Vantage 21 — Bet → Hit → 21",     file: "variations/vantage21-bet-hit-21.html" }
+  ];
+  var PRESETS = [
+    { label: "FB Canvas",     w: 480, h: 854 },
+    { label: "iPhone SE",     w: 375, h: 667 },
+    { label: "iPhone 15",     w: 393, h: 852 },
+    { label: "15 Pro Max",    w: 430, h: 932 },
+    { label: "Pixel 8",       w: 412, h: 915 },
+    { label: "Galaxy S24",    w: 360, h: 780 },
+    { label: "iPad Mini",     w: 768, h: 1024 }
+  ];
+
+  var $ = function(id){ return document.getElementById(id); };
+  var state = { w: 480, h: 854, rotated: false, framed: true, file: CREATIVES[0].file };
+
+  // creative dropdown (also honors ?file=)
+  CREATIVES.forEach(function(c){
+    var o = document.createElement('option');
+    o.value = c.file; o.textContent = c.label;
+    $('creative').appendChild(o);
+  });
+  var qs = new URLSearchParams(location.search);
+  if(qs.get('file')) state.file = qs.get('file');
+  $('creative').value = state.file;
+  $('creative').addEventListener('change', function(){ state.file = this.value; load(); });
+
+  // preset buttons
+  PRESETS.forEach(function(p, i){
+    var b = document.createElement('button');
+    b.className = 'tool preset' + (i === 0 ? ' active' : '');
+    b.textContent = p.label;
+    b.addEventListener('click', function(){
+      state.w = p.w; state.h = p.h;
+      $('cw').value = p.w; $('ch').value = p.h;
+      Array.prototype.forEach.call(document.querySelectorAll('.preset'), function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      apply();
+    });
+    $('presets').appendChild(b);
+  });
+
+  $('applyCustom').addEventListener('click', function(){
+    state.w = Math.max(200, parseInt($('cw').value, 10) || 480);
+    state.h = Math.max(200, parseInt($('ch').value, 10) || 854);
+    Array.prototype.forEach.call(document.querySelectorAll('.preset'), function(x){ x.classList.remove('active'); });
+    apply();
+  });
+  $('rotate').addEventListener('click', function(){ state.rotated = !state.rotated; apply(); });
+  $('frameToggle').addEventListener('click', function(){
+    state.framed = !state.framed;
+    $('device').classList.toggle('bare', !state.framed);
+    this.classList.toggle('active', !state.framed);
+    apply();
+  });
+  $('reload').addEventListener('click', load);
+
+  function apply(){
+    var w = state.rotated ? state.h : state.w;
+    var h = state.rotated ? state.w : state.h;
+    var f = $('frame');
+    f.style.width = w + 'px';
+    f.style.height = h + 'px';
+    // scale device to fit the stage
+    var pad = state.framed ? 28 : 0;
+    var availW = $('stagewrap').clientWidth - 48;
+    var availH = $('stagewrap').clientHeight - 48;
+    var k = Math.min(1, availW / (w + pad), availH / (h + pad));
+    $('device').style.transform = 'scale(' + k + ')';
+    $('dims').textContent = w + ' × ' + h + (k < 1 ? '  (fit ' + Math.round(k * 100) + '%)' : '');
+  }
+  function load(){
+    $('frame').src = state.file + '?r=' + Date.now();
+    apply();
+  }
+  window.addEventListener('resize', apply);
+  load();
+})();
+</script>
+</body>
+</html>

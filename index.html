@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playable Ads — Gallery</title>
+<style>
+  :root {
+    --bg: #0c1410; --panel: #142019; --line: #25372b;
+    --gold: #ffd34d; --green: #41d97a; --text: #e9f3ec; --muted: #8aa595;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: radial-gradient(ellipse at 50% -10%, #16271d, var(--bg) 60%);
+    color: var(--text); min-height: 100vh; padding: 32px 24px 60px;
+  }
+  header { max-width: 1200px; margin: 0 auto 28px; }
+  .eyebrow { color: var(--green); font-size: 12px; letter-spacing: 3px; text-transform: uppercase; font-weight: 800; }
+  h1 { font-size: 30px; margin: 6px 0 4px; letter-spacing: .5px; }
+  h1 span { color: var(--gold); }
+  .lead { color: var(--muted); font-size: 14px; max-width: 620px; line-height: 1.5; }
+
+  .toolbar { max-width: 1200px; margin: 22px auto 0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .search {
+    flex: 1; min-width: 220px; background: var(--panel); border: 1px solid var(--line);
+    color: var(--text); padding: 11px 14px; border-radius: 10px; font-size: 14px;
+  }
+  .search::placeholder { color: var(--muted); }
+  .count { color: var(--muted); font-size: 13px; }
+  .newbtn { background: linear-gradient(180deg,#ffe27a,var(--gold)); color: #3a2c00; border: 0; padding: 11px 16px; border-radius: 10px; font-size: 14px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+  .newbtn:hover { filter: brightness(1.07); }
+  .section-title { max-width: 1200px; margin: 44px auto 0; font-size: 21px; font-weight: 800; }
+  .section-title span { color: var(--gold); }
+  .section-sub { max-width: 1200px; margin: 4px auto 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+  /* ===== AI creator modal ===== */
+  .modal { position: fixed; inset: 0; z-index: 100; background: rgba(4,10,7,.72); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow: auto; }
+  .modal.show { display: flex; }
+  .sheet { width: 100%; max-width: 880px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px 26px; }
+  .sheet h2 { font-size: 20px; margin-bottom: 4px; } .sheet h2 span { color: var(--gold); }
+  .sheet .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .sheet .x { float: right; cursor: pointer; color: var(--muted); font-size: 22px; line-height: 1; border: 0; background: none; }
+  .types { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+  .type { border: 1px solid var(--line); border-radius: 12px; padding: 14px; cursor: pointer; background: var(--bg); transition: border-color .15s, background .15s; }
+  .type.sel { border-color: var(--green); background: rgba(65,217,122,.08); }
+  .type b { display: block; font-size: 14px; margin-bottom: 3px; }
+  .type span { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .frow { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .fld { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 180px; }
+  .fld label { font-size: 12px; color: var(--muted); }
+  .fld input, .fld select, .fld textarea { background: var(--bg); border: 1px solid var(--line); color: var(--text); padding: 10px 12px; border-radius: 9px; font-size: 13px; font-family: inherit; }
+  .fld textarea { min-height: 80px; resize: vertical; }
+  .actions-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+  .gen { background: var(--green); color: #06210f; border: 0; padding: 12px 20px; border-radius: 10px; font-weight: 800; font-size: 14px; cursor: pointer; }
+  .ghost { background: #1d2e24; color: var(--text); border: 1px solid var(--line); padding: 12px 16px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .status { font-size: 12px; color: var(--muted); }
+  .result { margin-top: 18px; display: none; }
+  .result.show { display: block; }
+  .result .rprev { display: flex; gap: 16px; flex-wrap: wrap; }
+  .result iframe { width: 300px; height: 533px; border: 0; border-radius: 14px; background: #07100b; box-shadow: 0 8px 24px rgba(0,0,0,.5); flex: none; }
+  .result pre { flex: 1; min-width: 280px; max-height: 533px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px; font: 12px/1.5 "SF Mono",Menlo,monospace; white-space: pre-wrap; color: #d7e7dc; }
+  .hintline { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+  .grid {
+    max-width: 1200px; margin: 22px auto 0;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 22px;
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+    display: flex; flex-direction: column; transition: transform .15s, border-color .15s, box-shadow .15s;
+  }
+  .card:hover { transform: translateY(-3px); border-color: #3a5a45; box-shadow: 0 12px 30px rgba(0,0,0,.4); }
+
+  .preview {
+    position: relative; background: #07100b; height: 300px; overflow: hidden;
+    border-bottom: 1px solid var(--line);
+  }
+  /* scaled live preview of the playable */
+  .preview iframe {
+    width: 360px; height: 640px; border: 0;
+    transform: scale(0.46); transform-origin: top left;
+    position: absolute; top: 12px; left: 50%; margin-left: -83px;
+    pointer-events: none; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  .badge {
+    position: absolute; top: 10px; right: 10px; z-index: 2;
+    font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 20px;
+  }
+  .badge.live { background: rgba(65,217,122,.18); color: var(--green); border: 1px solid rgba(65,217,122,.5); }
+  .badge.draft { background: rgba(255,211,77,.15); color: var(--gold); border: 1px solid rgba(255,211,77,.5); }
+  .preview .overlay {
+    position: absolute; inset: 0; z-index: 3; cursor: pointer;
+    background: linear-gradient(transparent 55%, rgba(7,16,11,.85));
+    display: flex; align-items: flex-end; justify-content: center; padding-bottom: 14px;
+    opacity: 0; transition: opacity .15s;
+  }
+  .preview .overlay:hover { opacity: 1; }
+  .preview .overlay span {
+    background: var(--green); color: #06210f; font-weight: 800; font-size: 13px;
+    padding: 9px 18px; border-radius: 30px;
+  }
+
+  .body { padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .title { font-size: 16px; font-weight: 800; }
+  .desc { font-size: 13px; color: var(--muted); line-height: 1.45; flex: 1; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+  .tag { font-size: 10px; color: var(--muted); background: #0e1a13; border: 1px solid var(--line); padding: 3px 8px; border-radius: 20px; letter-spacing: .5px; }
+  .meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .actions { display: flex; gap: 8px; margin-top: 10px; }
+  .btn {
+    flex: 1; text-align: center; text-decoration: none; padding: 10px; border-radius: 9px;
+    font-size: 13px; font-weight: 700; transition: filter .15s;
+  }
+  .btn:hover { filter: brightness(1.12); }
+  .btn-open { background: var(--green); color: #06210f; }
+  .btn-edit { background: var(--gold); color: #3a2c00; }
+  .btn-frame { background: #1d2e24; color: var(--text); border: 1px solid var(--line); }
+
+  .empty { grid-column: 1/-1; text-align: center; color: var(--muted); padding: 50px; }
+  footer { max-width: 1200px; margin: 40px auto 0; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 18px; line-height: 1.6; }
+  code { background: #0e1a13; padding: 2px 6px; border-radius: 5px; color: var(--gold); font-size: 12px; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">Marketing · Meta Playables</div>
+    <h1>Playable Ad <span>Gallery</span></h1>
+    <p class="lead">Live catalog of single-file HTML5 playable ads. Each tile is a real, running preview. Click to play full-screen, or open in a phone frame. Add new variations by dropping a file in <code>variations/</code> and adding one line to the list below.</p>
+  </header>
+
+  <div class="toolbar">
+    <button class="newbtn" onclick="openCreator()">✨ New creative with AI</button>
+    <a class="newbtn" href="viewer.html" style="text-decoration:none; display:inline-block;">📐 Device preview</a>
+    <input class="search" id="search" placeholder="Search by name, tag, or game…" oninput="render()">
+    <div class="count" id="count"></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <h2 class="section-title">🎬 UGC <span>creatives</span></h2>
+  <p class="section-sub">Animated video concepts (animatics) + their scripts. Previews autoplay — use them as motion creatives, or as the animatic to brief a real creator shoot.</p>
+  <div class="grid" id="ugcGrid"></div>
+
+  <footer>
+    <b>To add a variation:</b> save your HTML in <code>variations/</code>, then add an entry to the <code>VARIATIONS</code> array at the top of this file's script. Fields: <code>title</code>, <code>file</code>, <code>desc</code>, <code>tags</code>, <code>status</code> (<code>live</code>/<code>draft</code>), <code>game</code>, <code>updated</code>. See <code>README.md</code> for the full guide.
+  </footer>
+
+<script>
+  /* =====================================================================
+     VARIATIONS REGISTRY  —  add one object per playable. That's the only
+     edit needed to list a new ad here.
+     ===================================================================== */
+  const VARIATIONS = [
+    {
+      title: "Vantage 21 — Bet → Hit → 21",
+      file: "variations/vantage21-bet-hit-21.html",
+      game: "Blackjack",
+      desc: "Strategist real-money blackjack. Player & dealer both show a 10. Pick a stake (3 options), reveal a 5, hit to 21, dealer busts. Win → CTA.",
+      tags: ["blackjack", "betting", "skill", "real-money"],
+      status: "live",
+      updated: "2026-06-22",
+    },
+    {
+      title: "BJ Switch — Build Your Hands",
+      file: "variations/bjswitch-build-your-hands.html",
+      game: "Blackjack Switch",
+      desc: "Replica of the live BJ Switch build (VANTA felt). Two weak hands (16 & 15) → swap the 2nd cards to build 20 & 11 → bet both hands → stand + double to 21 → double win → PLAY NOW.",
+      tags: ["blackjack-switch", "swap", "two-hands", "double-down", "real-money"],
+      status: "live",
+      updated: "2026-07-16",
+    },
+    {
+      title: "Vantage 21 — What Would You Do?",
+      file: "variations/vantage21-what-would-you-do.html",
+      game: "Blackjack",
+      desc: "FB-ready, real app assets: card PNGs from the Xcode bundle, Cormorant Garamond + app icon from vantage21.gg, shoe top-right. Pair of 8s vs a 10, pick HIT / DOUBLE / SPLIT / STAND → every path plays out → PLAY NOW. Built-in scenario editor (cards, text, buttons, per-action outcomes).",
+      tags: ["blackjack", "poll", "what-would-you-do", "editor", "real-money"],
+      status: "live",
+      updated: "2026-07-16",
+    },
+    // ── add new variations below ──
+    // {
+    //   title: "Vantage 21 — Double Down",
+    //   file: "variations/vantage21-double-down.html",
+    //   game: "Blackjack",
+    //   desc: "…",
+    //   tags: ["blackjack", "double-down"],
+    //   status: "draft",
+    //   updated: "2026-06-22",
+    // },
+  ];
+
+  const grid = document.getElementById('grid');
+  const countEl = document.getElementById('count');
+
+  function render() {
+    const q = document.getElementById('search').value.trim().toLowerCase();
+    const items = VARIATIONS.filter(v => {
+      if (!q) return true;
+      return (v.title + ' ' + v.desc + ' ' + v.game + ' ' + v.tags.join(' ')).toLowerCase().includes(q);
+    });
+    countEl.textContent = items.length + ' of ' + VARIATIONS.length + ' playable' + (VARIATIONS.length === 1 ? '' : 's');
+
+    if (!items.length) {
+      grid.innerHTML = '<div class="empty">No playables match “' + q + '”.</div>';
+      return;
+    }
+
+    grid.innerHTML = items.map(v => `
+      <div class="card">
+        <div class="preview">
+          <span class="badge ${v.status}">${v.status}</span>
+          <iframe src="${v.file}" loading="lazy" title="${v.title}"></iframe>
+          <a class="overlay" href="${v.file}" target="_blank" rel="noopener"><span>▶ Play full-screen</span></a>
+        </div>
+        <div class="body">
+          <div class="title">${v.title}</div>
+          <div class="desc">${v.desc}</div>
+          <div class="tags">${v.tags.map(t => '<span class="tag">' + t + '</span>').join('')}</div>
+          <div class="meta-row"><span>${v.game}</span><span>Updated ${v.updated}</span></div>
+          <div class="actions">
+            <a class="btn btn-open" href="${v.file}" target="_blank" rel="noopener">Open</a>
+            <a class="btn btn-edit" href="studio.html?src=${encodeURIComponent(v.file)}&title=${encodeURIComponent(v.title)}" target="_blank" rel="noopener">✦ Edit in Studio</a>
+            <a class="btn btn-frame" href="frame.html?src=${encodeURIComponent(v.file)}&title=${encodeURIComponent(v.title)}" target="_blank" rel="noopener">Frame</a>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  render();
+
+  /* ===== UGC CREATIVES REGISTRY ===== */
+  const UGC = [
+    {
+      title: "Split-Screen Win Reaction",
+      file: "ugc/split-screen-win-reaction.html",
+      script: "ugc/split-screen-win-reaction.md",
+      desc: "50/50 reaction + gameplay animatic. “Wait — this is actually real?” Balance ticks up, TikTok-style captions, CTA. ~25–30s.",
+      tags: ["ugc", "reaction", "tiktok", "reels"],
+      length: "25–30s",
+      status: "live",
+    },
+    {
+      title: "The Rant — Skill, not RNG",
+      file: "ugc/the-rant-skill-blackjack.html",
+      script: "ugc/the-rant-skill-blackjack.md",
+      desc: "Creator rants that casino apps are rigged → discovers skill-based Vantage 21 → outsmarts the dealer → CTA. Dark-to-hype contrast, 3 hook options in the script. ~30s.",
+      tags: ["ugc", "rant", "skill", "no-rng"],
+      length: "30s",
+      status: "live",
+    },
+  ];
+  function renderUGC(){
+    var g = document.getElementById('ugcGrid'); if(!g) return;
+    if(!UGC.length){ g.innerHTML = '<div class="empty">No UGC creatives yet.</div>'; return; }
+    g.innerHTML = UGC.map(function(v){ return `
+      <div class="card">
+        <div class="preview">
+          <span class="badge ${v.status}">${v.status}</span>
+          <iframe src="${v.file}" loading="lazy" title="${v.title}"></iframe>
+          <a class="overlay" href="${v.file}" target="_blank" rel="noopener"><span>▶ Play full-screen</span></a>
+        </div>
+        <div class="body">
+          <div class="title">${v.title}</div>
+          <div class="desc">${v.desc}</div>
+          <div class="tags">${v.tags.map(function(t){ return '<span class="tag">'+t+'</span>'; }).join('')}</div>
+          <div class="meta-row"><span>UGC · ${v.length}</span><span>animatic</span></div>
+          <div class="actions">
+            <a class="btn btn-open" href="${v.file}" target="_blank" rel="noopener">▶ Open</a>
+            <a class="btn btn-frame" href="${v.script}" target="_blank" rel="noopener">📄 Script</a>
+          </div>
+        </div>
+      </div>`; }).join('');
+  }
+  renderUGC();
+</script>
+
+<!-- ===== AI CREATIVE CREATOR ===== -->
+<div class="modal" id="creator">
+  <div class="sheet">
+    <button class="x" onclick="closeCreator()">✕</button>
+    <h2>New <span>creative</span> with AI</h2>
+    <div class="sub">Describe the ad, pick a format, and generate it. Output is self-contained (single file for Playable/Regular; a script for UGC).</div>
+
+    <div class="types" id="types">
+      <div class="type sel" data-type="playable"><b>🎮 Playable</b><span>Interactive single-file HTML5 mini-game with a CTA.</span></div>
+      <div class="type" data-type="regular"><b>🖼️ Regular</b><span>Static banner / interstitial creative (HTML, no interaction).</span></div>
+      <div class="type" data-type="ugc"><b>🎬 UGC</b><span>User-generated-style ad: hook, script, shot list & captions.</span></div>
+    </div>
+
+    <div class="fld" style="margin-bottom:14px;">
+      <label>Brief — what's the product & angle?</label>
+      <textarea id="brief" placeholder="e.g. Skill-based blackjack app, real-money wins, target casual casino players. Hook on a near-21 hand."></textarea>
+    </div>
+
+    <div class="frow">
+      <div class="fld" id="netWrap"><label>Network</label><select id="net"><option value="facebook">Facebook / Meta</option><option value="applovin">AppLovin</option><option value="apple">Apple</option><option value="generic">Generic</option></select></div>
+      <div class="fld"><label>Model</label><select id="model"><option value="claude-opus-4-8">Opus 4.8 (best)</option><option value="claude-sonnet-4-6">Sonnet 4.6 (fast)</option><option value="claude-haiku-4-5-20251001">Haiku 4.5 (cheap)</option></select></div>
+      <div class="fld"><label>Anthropic API key (optional — stays in your browser)</label><input id="key" type="password" placeholder="sk-ant-…"></div>
+    </div>
+
+    <div class="actions-row">
+      <button class="gen" onclick="generate()">✨ Generate</button>
+      <button class="ghost" onclick="copyBrief()">📋 Copy brief → paste in Claude</button>
+      <span class="status" id="status"></span>
+    </div>
+    <div class="hintline">With a key it generates here. No key? Copy the brief and paste it into Claude Code — it returns the file/script. Generated Playables can be saved into <code>variations/</code> to appear in the gallery.</div>
+
+    <div class="result" id="result">
+      <div class="rprev">
+        <iframe id="rframe" title="result" style="display:none;"></iframe>
+        <pre id="rtext" style="display:none;"></pre>
+      </div>
+      <div class="actions-row" style="margin-top:12px;">
+        <button class="gen" id="dlBtn" onclick="downloadResult()">⬇️ Download</button>
+        <button class="ghost" onclick="copyResult()">📋 Copy</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var cType = 'playable', lastOut = '', lastIsHtml = true;
+  function openCreator(){ $id('creator').classList.add('show'); var k=localStorage.getItem('anthropic_key'); if(k) $id('key').value=k; }
+  function closeCreator(){ $id('creator').classList.remove('show'); }
+  function $id(i){ return document.getElementById(i); }
+  document.querySelectorAll('#types .type').forEach(function(t){
+    t.addEventListener('click', function(){
+      document.querySelectorAll('#types .type').forEach(function(x){ x.classList.remove('sel'); });
+      t.classList.add('sel'); cType = t.dataset.type;
+      $id('netWrap').style.display = (cType === 'ugc') ? 'none' : 'flex';
+    });
+  });
+
+  var HOOK = { facebook:'FbPlayableAd.onCTAClick()', applovin:'mraid.open(url)', apple:'window.open(url)', generic:'window.open(url)' };
+  function buildPrompt(){
+    var brief = $id('brief').value.trim() || 'a mobile game';
+    var net = $id('net').value;
+    if(cType === 'playable'){
+      return 'Create a single-file HTML5 playable ad for ' + net + '. Concept: ' + brief + '.\n'
+        + 'Hard requirements: ONE self-contained .html file; NO external assets or network calls; cards/art via CSS or inline SVG; portrait, built on a fixed board that scales to fit any viewport; ~15–20s of guided gameplay where the user wins; a polished end screen with a pulsing Download CTA; the CTA must call ' + HOOK[net] + '. Smooth CSS animations, modern casino/app aesthetic.\n'
+        + 'Return ONLY the complete HTML in a single ```html code block, nothing else.';
+    }
+    if(cType === 'regular'){
+      return 'Create a single-file STATIC HTML ad creative (banner / interstitial, no game) for ' + net + '. Concept: ' + brief + '.\n'
+        + 'Requirements: ONE self-contained .html file; no external assets; responsive; bold headline, product framing, and a prominent CTA button that calls ' + HOOK[net] + '. Modern, high-contrast, conversion-focused.\n'
+        + 'Return ONLY the complete HTML in a single ```html code block.';
+    }
+    return 'Write a UGC-style (user-generated-content) ad concept for: ' + brief + '.\n'
+      + 'Include, as markdown: a 3-second HOOK; a full SCRIPT with on-screen text + voiceover lines; a SHOT LIST (creator actions/angles); CAPTIONS/overlay text; and a strong CTA. Keep it authentic and platform-native (TikTok/Reels). Return markdown only.';
+  }
+
+  function copyBrief(){
+    navigator.clipboard.writeText(buildPrompt()).then(function(){ setStatus('Copied — paste into Claude Code to get your ' + cType + '.'); },
+      function(){ setStatus('Copy failed — select the brief manually.'); });
+  }
+  function setStatus(s){ $id('status').textContent = s; }
+
+  function generate(){
+    var key = $id('key').value.trim();
+    if(!key){ setStatus('No API key — use “Copy brief” instead (zero setup).'); return; }
+    localStorage.setItem('anthropic_key', key);
+    var model = $id('model').value;
+    setStatus('Generating with ' + model + '…');
+    fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'content-type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:model, max_tokens:16000, messages:[{ role:'user', content: buildPrompt() }] })
+    }).then(function(r){ return r.json(); }).then(function(data){
+      if(data.error){ setStatus('API error: ' + (data.error.message||'')); return; }
+      var text = (data.content||[]).map(function(b){ return b.text||''; }).join('\n').trim();
+      showResult(text);
+      setStatus('Done.');
+    }).catch(function(e){ setStatus('Request failed: ' + e.message + ' (try “Copy brief” instead).'); });
+  }
+
+  function showResult(text){
+    $id('result').classList.add('show');
+    if(cType === 'ugc'){
+      lastIsHtml = false; lastOut = text;
+      $id('rframe').style.display = 'none';
+      var pre = $id('rtext'); pre.style.display = 'block'; pre.textContent = text;
+    } else {
+      var m = text.match(/```(?:html)?\s*([\s\S]*?)```/);
+      var html = m ? m[1].trim() : (text.indexOf('<!DOCTYPE')>=0 ? text : null);
+      if(!html){ lastIsHtml=false; lastOut=text; $id('rframe').style.display='none'; var p=$id('rtext'); p.style.display='block'; p.textContent='No HTML detected:\n\n'+text; return; }
+      lastIsHtml = true; lastOut = html;
+      $id('rtext').style.display = 'none';
+      var f = $id('rframe'); f.style.display = 'block'; f.srcdoc = html;
+    }
+  }
+
+  function downloadResult(){
+    if(!lastOut){ return; }
+    var ext = lastIsHtml ? 'html' : 'md';
+    var name = cType + '-creative-' + Date.now().toString(36) + '.' + ext;
+    var b = new Blob([lastOut], {type: lastIsHtml ? 'text/html' : 'text/markdown'});
+    var u = URL.createObjectURL(b); var a = document.createElement('a'); a.href=u; a.download=name; a.click(); setTimeout(function(){ URL.revokeObjectURL(u); }, 1000);
+  }
+  function copyResult(){ if(lastOut) navigator.clipboard.writeText(lastOut).then(function(){ setStatus('Copied to clipboard.'); }); }
+
+  $id('creator').addEventListener('click', function(e){ if(e.target.id === 'creator') closeCreator(); });
+</script>
+</body>
+</html>
