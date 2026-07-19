@@ -118,6 +118,7 @@
   #headline { position:absolute; left:50%; top:43.5%; transform:translate(-50%,-50%); z-index:8;
     width:450px; text-align:center; pointer-events:none; opacity:0; transition:opacity .4s, transform .4s; }
   #headline::before { content:""; position:absolute; left:-30px; right:-30px; top:-34px; bottom:-34px; z-index:-1;
+    opacity:var(--scrimOp,1);
     background:radial-gradient(ellipse 60% 55% at 50% 50%, rgba(0,0,0,0.72), rgba(0,0,0,0.35) 55%, transparent 75%); }
   #headline.show { opacity:1; }
   #headline .big {
@@ -221,6 +222,12 @@
   #editor input[type=text] { flex:1; min-width:90px; background:#14101f; border:1px solid rgba(167,139,250,0.35); color:#fff;
     padding:8px 10px; border-radius:8px; font-size:13px; font-family:Menlo, monospace; }
   #editor input[type=text].wide { font-family:inherit; }
+  #editor select, #editor input[type=number] { background:#14101f; border:1px solid rgba(167,139,250,0.35); color:#fff;
+    padding:7px 8px; border-radius:8px; font-size:13px; font-family:inherit; }
+  #editor input[type=color] { background:#14101f; border:1px solid rgba(167,139,250,0.35); border-radius:8px;
+    width:38px; height:32px; padding:2px; cursor:pointer; }
+  #editor input[type=range] { accent-color:#8b5cf6; flex:1; min-width:80px; }
+  #editor .mini-lbl { font-size:10px; color:rgba(255,255,255,0.55); min-width:auto; }
   #editor .chk { display:flex; align-items:center; gap:6px; font-size:12px; color:#fff; font-weight:700;
     background:#14101f; border:1px solid rgba(167,139,250,0.35); padding:7px 12px; border-radius:20px; cursor:pointer; }
   #editor .chk input { accent-color:#8b5cf6; }
@@ -359,6 +366,46 @@
         <br><b>Store link:</b> where PLAY NOW sends the user. On Facebook the destination comes from Ads Manager (the FbPlayableAd hook), so this link is the fallback used by AppLovin / Apple / generic builds and browser previews.</div>
       </div>
 
+      <div class="sec">
+        <h3>Text styles</h3>
+        <div class="row"><label>Element</label>
+          <select id="tsEl" style="flex:1"></select>
+          <button class="ebtn close" id="tsReset" style="flex:none; padding:8px 12px; font-size:11px;">Reset element</button>
+        </div>
+        <div class="row"><label>Font</label>
+          <select id="tsFont" style="flex:1">
+            <option value="brand-italic">Cormorant — italic (brand)</option>
+            <option value="brand">Cormorant — regular</option>
+            <option value="system">System sans</option>
+            <option value="georgia-italic">Georgia — italic</option>
+            <option value="mono">Monospace</option>
+          </select>
+          <span class="mini-lbl">Weight</span>
+          <select id="tsWeight"><option>400</option><option>500</option><option>600</option><option>700</option><option>800</option><option>900</option></select>
+        </div>
+        <div class="row"><label>Size / Color</label>
+          <input type="number" id="tsSize" min="8" max="120" style="width:70px"> px
+          <input type="color" id="tsColor">
+          <span id="tsColor2wrap" style="display:flex; align-items:center; gap:6px;"><span class="mini-lbl">Gradient bottom</span><input type="color" id="tsColor2"></span>
+        </div>
+        <div class="row"><label>Position</label>
+          <span class="mini-lbl">X</span><input type="number" id="tsDx" step="2" style="width:70px">
+          <span class="mini-lbl">Y</span><input type="number" id="tsDy" step="2" style="width:70px">
+          <span class="mini-lbl">px from its designed spot</span>
+        </div>
+        <div class="row"><label>Shadow</label>
+          <label class="chk" style="padding:5px 10px;"><input type="checkbox" id="tsShadowOn">on</label>
+          <input type="color" id="tsShadowColor">
+          <span class="mini-lbl">Blur</span><input type="number" id="tsShadowBlur" min="0" max="60" style="width:58px">
+          <span class="mini-lbl">Opacity %</span><input type="number" id="tsShadowOp" min="0" max="100" style="width:58px">
+          <span class="mini-lbl">Y</span><input type="number" id="tsShadowY" min="-30" max="30" style="width:58px">
+        </div>
+        <div class="row" id="tsScrimRow"><label>Backdrop halo</label>
+          <input type="range" id="tsScrim" min="0" max="100"><b id="tsScrimVal" style="font-size:12px; min-width:34px;"></b>
+        </div>
+        <div class="hint">Changes apply LIVE — hit Close to see them on the table. Backdrop halo is the dark ellipse behind the headline. Reset element returns it to the designed look. Everything here is baked into the Facebook export.</div>
+      </div>
+
       <div class="ebtns">
         <button class="ebtn apply" id="eApply">Apply &amp; Replay</button>
         <button class="ebtn copy" id="eCopy">Copy CONFIG</button>
@@ -403,6 +450,7 @@
     endSub: "Every decision is yours — for <b>real money</b>.",
     ctaLabel: "Play Now",
     ctaHint: "Real cash blackjack · Withdraw your winnings",
+    textStyles: {},                 // per-element font/size/color/position/shadow overrides (see Text styles in the editor)
     layout: {}, hidden: [], customItems: [], styles: {}
   };
   //CONFIG_END
@@ -503,6 +551,91 @@
     $('ctaBtn').textContent = CONFIG.ctaLabel;
     $('ctaHint').textContent = CONFIG.ctaHint;
     $('endIcon').src = assetURI('app_icon');
+    applyTextStyles();
+  }
+
+  // ── Text styles (font / size / color / position / shadow per element) ──
+  var TS_FONTS = {
+    'brand-italic':  ["'Cormorant Garamond', 'New York', Georgia, serif", 'italic'],
+    'brand':         ["'Cormorant Garamond', 'New York', Georgia, serif", 'normal'],
+    'system':        ['-apple-system, "SF Pro Display", "Segoe UI", Roboto, Arial, sans-serif', 'normal'],
+    'georgia-italic':['Georgia, "Times New Roman", serif', 'italic'],
+    'mono':          ['Menlo, Consolas, monospace', 'normal']
+  };
+  var TS_DEFAULTS = {
+    headlineBig: { font:'brand-italic', weight:600, size:48, color:'#b747ff', color2:'#8b5cf6', dx:0, dy:0, scrim:100,
+                   shadow:{ on:true, color:'#000000', blur:10, op:85, y:4 } },
+    headlineSmall:{ font:'system', weight:600, size:12, color:'#ffffff', dx:0, dy:0,
+                   shadow:{ on:true, color:'#000000', blur:6, op:60, y:2 } },
+    barHint:     { font:'system', weight:600, size:11, color:'#ffffff', dx:0, dy:0,
+                   shadow:{ on:true, color:'#000000', blur:5, op:70, y:2 } },
+    endTitle:    { font:'brand-italic', weight:600, size:31, color:'#ffffff', dx:0, dy:0,
+                   shadow:{ on:true, color:'#8b5cf6', blur:24, op:50, y:0 } },
+    endSub:      { font:'system', weight:400, size:14, color:'#ffffff', dx:0, dy:0,
+                   shadow:{ on:false, color:'#000000', blur:0, op:0, y:0 } },
+    ctaBtn:      { font:'system', weight:900, size:18, color:'#ffffff', dx:0, dy:0,
+                   shadow:{ on:false, color:'#000000', blur:0, op:0, y:0 } },
+    ctaHint:     { font:'system', weight:400, size:12, color:'#8d8a99', dx:0, dy:0,
+                   shadow:{ on:false, color:'#000000', blur:0, op:0, y:0 } }
+  };
+  var TS_LIST = [
+    ['headlineBig',  'Headline — big text'],
+    ['headlineSmall','Headline — small line'],
+    ['barHint',      'Bottom hint (TAP YOUR MOVE)'],
+    ['endTitle',     'End screen — title'],
+    ['endSub',       'End screen — subtitle'],
+    ['ctaBtn',       'PLAY NOW button'],
+    ['ctaHint',      'CTA hint line']
+  ];
+  function hexToRgba(hex, opPct){
+    var h = String(hex||'#000000').replace('#','');
+    if(h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    var r = parseInt(h.substr(0,2),16)||0, g = parseInt(h.substr(2,2),16)||0, b = parseInt(h.substr(4,2),16)||0;
+    return 'rgba('+r+','+g+','+b+','+(Math.max(0,Math.min(100,opPct==null?100:opPct))/100)+')';
+  }
+  function tsEffective(key){
+    var d = JSON.parse(JSON.stringify(TS_DEFAULTS[key]));
+    var o = (CONFIG.textStyles||{})[key];
+    if(o){ Object.keys(o).forEach(function(k){
+      if(k === 'shadow'){ var s = o.shadow||{}; Object.keys(s).forEach(function(sk){ d.shadow[sk] = s[sk]; }); }
+      else d[k] = o[k];
+    }); }
+    return d;
+  }
+  function clearTextStyle(key){
+    var el = $(key); if(!el) return;
+    ['fontFamily','fontStyle','fontWeight','fontSize','color','textShadow','backgroundImage','filter','animation'].forEach(function(p){ el.style[p] = ''; });
+    (key === 'headlineBig' ? $('headline') : el).style.translate = '';
+    if(key === 'headlineBig') $('headline').style.removeProperty('--scrimOp');
+  }
+  function applyTextStyles(){
+    var TS = CONFIG.textStyles || {};
+    TS_LIST.forEach(function(pair){
+      var key = pair[0];
+      if(!TS[key]){ return; }              // untouched → designed look (incl. breathe animation)
+      var st = tsEffective(key);
+      var el = $(key); if(!el) return;
+      var f = TS_FONTS[st.font] || TS_FONTS.system;
+      el.style.fontFamily = f[0];
+      el.style.fontStyle  = f[1];
+      el.style.fontWeight = st.weight;
+      el.style.fontSize   = st.size + 'px';
+      (key === 'headlineBig' ? $('headline') : el).style.translate = (st.dx||0)+'px '+(st.dy||0)+'px';
+      var sh = st.shadow || { on:false };
+      if(key === 'headlineBig'){
+        el.style.backgroundImage = 'linear-gradient(180deg, '+st.color+', '+(st.color2||st.color)+')';
+        el.style.animation = 'none';       // custom shadow replaces the breathing glow
+        el.style.filter = sh.on
+          ? 'drop-shadow(0 '+(sh.y||0)+'px '+(sh.blur||0)+'px '+hexToRgba(sh.color, sh.op)+')'
+          : 'none';
+        $('headline').style.setProperty('--scrimOp', (st.scrim == null ? 100 : st.scrim)/100);
+      } else {
+        el.style.color = st.color;
+        el.style.textShadow = sh.on
+          ? '0 '+(sh.y||0)+'px '+(sh.blur||0)+'px '+hexToRgba(sh.color, sh.op)
+          : 'none';
+      }
+    });
   }
 
   // ── player hand rendering ─────────────────────────────
@@ -927,7 +1060,7 @@
     var p = CONFIG.player.map(parseCard);
     if(p.length === 2 && cardValue(p[0].rank) !== cardValue(p[1].rank)){ CONFIG.buttons.split = false; $('eBtnSplit').checked = false; }
   }
-  $('editBtn').addEventListener('click', function(){ fillEditor(); $('editor').classList.add('show'); });
+  $('editBtn').addEventListener('click', function(){ fillEditor(); if(window.tsLoadHook) window.tsLoadHook(); $('editor').classList.add('show'); });
   $('eClose').addEventListener('click', function(){ $('editor').classList.remove('show'); });
   $('eApply').addEventListener('click', function(){ readEditor(); $('editor').classList.remove('show'); resetScene(); });
   $('eCopy').addEventListener('click', function(){
@@ -962,7 +1095,66 @@
     });
   });
 
-  window.addEventListener('load', function(){ fit(); resetScene(); });
+  // ── Text styles editor wiring (live) ─────────────────
+  TS_LIST.forEach(function(pair){
+    var o = document.createElement('option');
+    o.value = pair[0]; o.textContent = pair[1];
+    $('tsEl').appendChild(o);
+  });
+  function tsLoad(){
+    var key = $('tsEl').value, st = tsEffective(key);
+    $('tsFont').value = st.font; $('tsWeight').value = st.weight;
+    $('tsSize').value = st.size; $('tsColor').value = st.color;
+    $('tsColor2wrap').style.display = key === 'headlineBig' ? 'flex' : 'none';
+    if(key === 'headlineBig') $('tsColor2').value = st.color2 || st.color;
+    $('tsDx').value = st.dx || 0; $('tsDy').value = st.dy || 0;
+    $('tsShadowOn').checked = !!st.shadow.on;
+    $('tsShadowColor').value = st.shadow.color || '#000000';
+    $('tsShadowBlur').value = st.shadow.blur || 0;
+    $('tsShadowOp').value = st.shadow.op == null ? 100 : st.shadow.op;
+    $('tsShadowY').value = st.shadow.y || 0;
+    $('tsScrimRow').style.display = key === 'headlineBig' ? 'flex' : 'none';
+    if(key === 'headlineBig'){ var sc = st.scrim == null ? 100 : st.scrim; $('tsScrim').value = sc; $('tsScrimVal').textContent = sc; }
+  }
+  function tsSave(){
+    var key = $('tsEl').value;
+    CONFIG.textStyles = CONFIG.textStyles || {};
+    var st = {
+      font: $('tsFont').value,
+      weight: parseInt($('tsWeight').value, 10) || 600,
+      size: parseInt($('tsSize').value, 10) || TS_DEFAULTS[key].size,
+      color: $('tsColor').value,
+      dx: parseInt($('tsDx').value, 10) || 0,
+      dy: parseInt($('tsDy').value, 10) || 0,
+      shadow: {
+        on: $('tsShadowOn').checked,
+        color: $('tsShadowColor').value,
+        blur: parseInt($('tsShadowBlur').value, 10) || 0,
+        op: Math.max(0, Math.min(100, parseInt($('tsShadowOp').value, 10) || 0)),
+        y: parseInt($('tsShadowY').value, 10) || 0
+      }
+    };
+    if(key === 'headlineBig'){
+      st.color2 = $('tsColor2').value;
+      st.scrim = parseInt($('tsScrim').value, 10);
+      $('tsScrimVal').textContent = st.scrim;
+      CONFIG.headlineTop = st.color; CONFIG.headlineBottom = st.color2;
+    }
+    CONFIG.textStyles[key] = st;
+    applyTextStyles();
+  }
+  ['tsFont','tsWeight','tsSize','tsColor','tsColor2','tsDx','tsDy','tsShadowOn','tsShadowColor','tsShadowBlur','tsShadowOp','tsShadowY','tsScrim']
+    .forEach(function(id){ $(id).addEventListener('input', tsSave); $(id).addEventListener('change', tsSave); });
+  window.tsLoadHook = tsLoad;
+  $('tsEl').addEventListener('change', tsLoad);
+  $('tsReset').addEventListener('click', function(){
+    var key = $('tsEl').value;
+    if(CONFIG.textStyles) delete CONFIG.textStyles[key];
+    clearTextStyle(key);
+    tsLoad();
+  });
+
+  window.addEventListener('load', function(){ fit(); resetScene(); tsLoad(); });
 })();
 </script>
 </body>
