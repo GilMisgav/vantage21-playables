@@ -354,7 +354,9 @@
         <div class="row"><label>Subtitle</label><input type="text" class="wide" id="eEndSub"></div>
         <div class="row"><label>CTA button</label><input type="text" class="wide" id="eCtaLabel"></div>
         <div class="row"><label>CTA hint</label><input type="text" class="wide" id="eCtaHint"></div>
-        <div class="hint">Subtitle allows &lt;b&gt;…&lt;/b&gt; for the green accent. The VANTAGE 21 logo and the win amount are automatic.</div>
+        <div class="row"><label>Store link</label><input type="text" class="wide" id="eCtaUrl" placeholder="https://apps.apple.com/app/id…"></div>
+        <div class="hint">Subtitle allows &lt;b&gt;…&lt;/b&gt; for the green accent. The VANTAGE 21 logo and the win amount are automatic.
+        <br><b>Store link:</b> where PLAY NOW sends the user. On Facebook the destination comes from Ads Manager (the FbPlayableAd hook), so this link is the fallback used by AppLovin / Apple / generic builds and browser previews.</div>
       </div>
 
       <div class="ebtns">
@@ -895,6 +897,7 @@
     $('eEndSub').value = CONFIG.endSub;
     $('eCtaLabel').value = CONFIG.ctaLabel;
     $('eCtaHint').value = CONFIG.ctaHint;
+    $('eCtaUrl').value = CONFIG.ctaUrl;
   }
   function codes(v){ return String(v||'').split(',').map(function(s){return s.trim().toUpperCase();}).filter(Boolean); }
   function readEditor(){
@@ -918,6 +921,9 @@
     CONFIG.endSub = $('eEndSub').value;
     CONFIG.ctaLabel = $('eCtaLabel').value || 'Play Now';
     CONFIG.ctaHint = $('eCtaHint').value;
+    var u = $('eCtaUrl').value.trim();
+    if(u && !/^https?:\/\//i.test(u)) u = 'https://' + u;
+    CONFIG.ctaUrl = u || CONFIG.ctaUrl;
     var p = CONFIG.player.map(parseCard);
     if(p.length === 2 && cardValue(p[0].rank) !== cardValue(p[1].rank)){ CONFIG.buttons.split = false; $('eBtnSplit').checked = false; }
   }
